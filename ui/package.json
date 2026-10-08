@@ -1,0 +1,23 @@
+{
+  "name": "fluxo-ui",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "vue": "^3.5.0",
+    "sortablejs": "^1.15.6",
+    "@lucide/vue": "^1.53.0"
+  },
+  "devDependencies": {
+    "vite": "^7.0.0",
+    "@vitejs/plugin-vue": "^6.0.0",
+    "vitest": "^5.0.3",
+    "@vue/test-utils": "^2.5.1",
+    "happy-dom": "^20.14.5"
+  }
+}
