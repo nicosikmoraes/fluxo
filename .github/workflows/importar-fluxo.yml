@@ -1,0 +1,28 @@
+name: Importar Fluxo
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  importar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publicar codigo e historico Git
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git clone "https://github.com/${GITHUB_REPOSITORY}.git" --branch main --single-branch repo
+          cd repo
+          if [ ! -f fluxo-source.bundle ]; then
+            echo "O projeto ja foi importado."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config credential.helper '!f() { echo username=x-access-token; echo password="$GH_TOKEN"; }; f'
+          git fetch ./fluxo-source.bundle main
+          git merge --allow-unrelated-histories -X theirs --no-edit FETCH_HEAD
+          git rm fluxo-source.bundle
+          git commit -m "Finalizar publicacao do Fluxo"
+          git push origin HEAD:main
