@@ -1,0 +1,6 @@
+import { defineConfig, mergeConfig } from 'vitest/config';
+import vite from './vite.config';
+export default mergeConfig(vite, defineConfig({ test: {
+ environment: 'happy-dom',
+ include: ['tests/roadmap-preferences.test.js', 'tests/roadmap-portals.test.js', 'tests/roadmap-alignment.test.js', 'tests/roadmap-alignment-controls.test.js'],
+} }));

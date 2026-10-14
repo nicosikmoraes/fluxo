@@ -5,3 +5,51 @@
 @media(max-width:1100px){.maps-workspace{grid-template-columns:210px minmax(0,1fr);height:600px}.maps-count{display:none}.maps-save{font-size:8px}.maps-picker select{max-width:180px}.maps-title h3{font-size:16px}.map-navigation-hint{display:none}.maps-palette{padding:17px 11px}.maps-heading>.btn{font-size:10px;padding:10px}.maps-title p{font-size:10px}}
 @media(max-width:680px){.maps-heading{align-items:flex-start;flex-wrap:wrap;gap:12px}.maps-title h3{font-size:16px}.maps-title p{font-size:10px}.maps-symbol{width:44px;height:44px}.maps-heading>.btn{margin-left:auto}.maps-bar{padding:10px;flex-wrap:wrap;gap:4px}.maps-picker{width:100%}.maps-picker select{max-width:none;flex:1;min-width:0}.maps-save{width:100%;text-align:right;margin-top:3px}.maps-workspace{display:flex;flex-direction:column;height:740px;max-height:none}.maps-palette{max-height:225px;padding:12px;border-right:0;border-bottom:1px solid #e4eaf5}.maps-palette header{margin-bottom:9px}.maps-palette .eyebrow,.palette-hint,.maps-palette footer{display:none}.maps-search{padding:7px;margin-bottom:9px}.palette-items{display:flex;gap:8px;min-height:110px;overflow:auto;padding:2px}.palette-card{min-width:200px;width:200px;margin-bottom:4px;padding:8px}.palette-card small{margin:3px 0 5px 18px}.palette-empty{padding:5px;flex-direction:row;text-align:left}.maps-viewport{flex:1;min-height:450px}.map-controls{right:13px;bottom:13px}.map-connection-tip,.map-edge-actions{font-size:9px;padding:8px;gap:6px}.maps-empty{padding:35px 12px}.maps-empty-cards{gap:6px}.maps-empty-cards span{padding:16px 13px;font-size:9px}.maps-empty-cards svg{width:18px}.maps-empty h3{font-size:15px;line-height:1.8}.maps-empty p{font-size:11px}}
 @media(max-width:680px){.maps-stage{flex:1;min-height:450px}.maps-canvas-footer{min-height:48px;padding:6px 10px}}
+
+.maps-primary{white-space:nowrap;flex-shrink:0;font-size:10px}.maps-primary[aria-pressed="true"]{color:#7b91c7;opacity:1}.maps-bar{flex-wrap:wrap}
+
+.map-node.pending:not(.blocked):not(.connecting){border-color:#a5b8e7;animation:map-pending-halo 4s ease-in-out infinite}
+.map-node.pending:not(.blocked):not(.connecting) .map-node-grip{position:relative;overflow:hidden;background:#edf2ff;color:#8095ce}
+.map-node.pending:not(.blocked):not(.connecting) .map-node-grip::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(100deg,transparent,#cad8ff99,transparent);transform:translateX(-110%);animation:map-pending-shine 4s ease-in-out infinite}
+.map-node.pending:not(.blocked):not(.connecting) .map-status{background:#edf2ff;color:#8095ce}
+@keyframes map-pending-halo{0%,100%{box-shadow:0 0 0 2px #b0c5fd12,0 5px 20px #8297ca12}50%{box-shadow:0 0 0 6px #b0c5fd2b,0 8px 28px #8297ca26}}
+@keyframes map-pending-shine{0%,25%{transform:translateX(-110%)}65%,100%{transform:translateX(110%)}}
+@media(prefers-reduced-motion:reduce){.map-node.pending:not(.blocked):not(.connecting){animation:none;box-shadow:0 0 0 2px #b0c5fd20,0 5px 20px #8297ca12}.map-node.pending:not(.blocked):not(.connecting) .map-node-grip::after{animation:none;display:none}}
+
+.map-portal{position:absolute;width:160px;min-height:110px;pointer-events:auto;display:flex;flex-direction:column;align-items:center;gap:16px;padding-top:10px;isolation:isolate}
+.map-portal-symbol{position:relative;display:grid;place-items:center;width:76px;height:76px;flex-shrink:0;background:#fff;color:#809bd8;border-radius:50%;box-shadow:inset 0 0 0 1px #d6e1fa,0 0 0 7px #c9d7fb18,0 6px 24px #8ba4db15;cursor:grab;touch-action:none;user-select:none}
+.map-portal-symbol:active{cursor:grabbing}
+.map-portal-symbol::before{content:"";position:absolute;inset:-5px;border-radius:50%;background:conic-gradient(from 0deg,transparent 0deg,#a5baf0 90deg,#d4dfff 130deg,transparent 200deg);mask:radial-gradient(farthest-side,transparent calc(100% - 2px),#000 calc(100% - 2px));animation:portal-orbit 6s linear infinite;opacity:.65;pointer-events:none}
+.map-portal-symbol::after{content:"";position:absolute;inset:-13px;border:1px solid #c7d6fb;border-radius:50%;animation:portal-ring 6s ease-in-out infinite;pointer-events:none}
+.map-portal-label{font-size:12px;font-weight:550;color:#687fa7;background:#ffffffed;border:1px solid #e1e8f5;border-radius:8px;padding:8px 12px;max-width:160px;overflow-wrap:anywhere;text-align:center}
+.map-portal-input{position:absolute;left:37px;top:43px;width:10px;height:10px;padding:0;border:2px solid #a5b8e7;background:#fff;border-radius:50%;z-index:3;cursor:crosshair;touch-action:none}
+.map-portal-input:hover,.is-connecting .map-portal-input{border-color:#7694dc;box-shadow:0 0 0 6px #90acf425}
+.map-portal-actions{position:absolute;top:-18px;right:0;display:flex;gap:3px;opacity:0;transition:opacity .15s;background:#fff;border:1px solid #e1e8f5;border-radius:7px;z-index:4}
+.map-portal:hover .map-portal-actions,.map-portal:focus-within .map-portal-actions{opacity:1}
+.map-portal-actions .icon-btn{width:25px;height:25px}
+@keyframes portal-orbit{to{transform:rotate(360deg)}}
+@keyframes portal-ring{0%,100%{transform:scale(.96);opacity:.15}50%{transform:scale(1.07);opacity:.45}}
+@media(prefers-reduced-motion:reduce){.map-portal-symbol::before,.map-portal-symbol::after{animation:none}.map-portal-symbol::after{opacity:.3}}
+@media(pointer:coarse){.map-portal-actions{opacity:1}.map-portal-actions .icon-btn{width:36px;height:36px}}
+
+.map-portal-input::after{content:"";position:absolute;inset:-10px}
+.portal-trail{fill:none;stroke:#8fa9df;stroke-width:3;stroke-linecap:round;stroke-dasharray:1 8;animation:portal-trail-flow 6s linear infinite;pointer-events:none}
+.portal-link.finished{stroke:#bdd8c9}.portal-trail.finished{stroke:#82b297}
+.map-portal.finished .map-portal-symbol{background:linear-gradient(145deg,#fff,#f0f8f3);color:#76a088;box-shadow:inset 0 0 0 1px #bcdac8,0 0 0 7px #cfe7d818,0 6px 24px #87ad9615}
+.map-portal.finished .map-portal-symbol::before{background:conic-gradient(transparent,#9bc6ac 90deg,#d5eadc 130deg,transparent 200deg);animation-duration:9s}
+.map-portal.finished .map-portal-symbol::after{border-color:#c6dfcf}
+.map-portal.finished .map-portal-input{border-color:#87b69c;background:#edf7f0}
+.map-portal.finished .map-portal-label{border-color:#d7e8dd;color:#739381}
+.map-node.portal-completed{background:linear-gradient(140deg,#fff,#f3faf5);border:1px solid #b8d9c5;animation:map-completed-halo 6s ease-in-out infinite}
+.map-node.portal-completed .map-node-grip{position:relative;overflow:hidden;background:#edf7f0;color:#7ca28b;border-bottom-color:#dcecdf}
+.map-node.portal-completed .map-node-grip::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(105deg,transparent,#d2e9db99,transparent);transform:translateX(-110%);animation:map-pending-shine 6s ease-in-out infinite}
+.map-node.portal-completed .map-node-title{color:#607c6c;width:calc(100% - 73px);margin-right:56px}
+.map-node.portal-completed .map-status{color:#6e987f;background:#e7f3eb}
+.map-node.portal-completed .map-port.output{background:#e3f1e8;border-color:#84b59c}
+.map-completion-seal{position:absolute;right:13px;top:62px;width:32px;height:32px;display:grid;place-items:center;color:#6f9f83;background:#e5f3e9;border:1px solid #bcdcc8;border-radius:50%;animation:map-completion-seal 6s ease-in-out infinite;pointer-events:none}
+@keyframes map-completed-halo{0%,100%{box-shadow:0 0 0 2px #c9e4d512,0 6px 24px #8aaa9712}50%{box-shadow:0 0 0 6px #c9e4d52b,0 9px 30px #8aaa9720}}
+@keyframes map-completion-seal{0%,100%{box-shadow:0 0 0 4px #e5f3e96b}50%{box-shadow:0 0 0 7px #d2e9da66}}
+@keyframes portal-trail-flow{from{stroke-dashoffset:18}to{stroke-dashoffset:0}}
+@media(prefers-reduced-motion:reduce){.portal-trail,.map-node.portal-completed,.map-completion-seal,.map-node.portal-completed .map-node-grip::after{animation:none}.map-node.portal-completed .map-node-grip::after{display:none}.map-completion-seal{box-shadow:0 0 0 4px #e5f3e96b}}
+
+.roadmap-alignment-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.roadmap-alignment-controls .text-btn{font-size:10px;white-space:nowrap}.alignment-summary{font-size:10px;color:#7b91c7}.maps-workspace.layout-preview{border-color:#b7c9ef}.layout-preview .maps-palette{pointer-events:none;opacity:.6}.layout-preview .map-node,.layout-preview .map-portal,.layout-preview .map-edge-hit{pointer-events:none}.roadmap-alignment-controls button:disabled{opacity:.45;cursor:default}
