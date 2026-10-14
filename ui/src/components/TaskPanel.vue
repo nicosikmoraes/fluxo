@@ -5,6 +5,7 @@ import { state, mutate, label, date, statuses, notify } from '../workspace';
 import { vSortable } from '../sortable';
 import Modal from './Modal.vue';
 import ConfirmDialog from './ConfirmDialog.vue';
+import { deliveryLabel } from '../calendar';
 const props=defineProps({ taskId:Number, initialActivityId:Number }); const emit=defineEmits(['close','edit','delete']);
 const task=computed(()=>state.tasks.find(t=>t.id===props.taskId));
 const project=computed(()=>state.projects.find(p=>p.id===task.value?.project_id));
@@ -36,6 +37,7 @@ async function deleteItem(){const r=await mutate('/'+deleting.value.type+'/'+del
     <div class="inline-actions"><span class="status-tag" :class="task.status"><span class="status-dot"></span>{{ label(task.status) }}</span><span v-if="task.blocked_count" class="blocked-tag"><LockKeyhole :size="12" />{{ task.blocked_count }} {{ task.blocked_count===1?'bloqueio':'bloqueios' }}</span></div>
     <h1 class="task-title">{{ task.title }}</h1><p v-if="task.description" class="task-description">{{ task.description }}</p><button v-else class="text-btn subtle" @click="emit('edit',task)"><Plus :size="14" /> Adicionar descrição</button>
     <div class="task-meta"><CalendarDays :size="14" /> Criada em {{ date(task.created_at) }}</div>
+    <button class="task-delivery" @click="emit('edit',task)"><CalendarDays :size="14" />{{ deliveryLabel(task.due_date) }}<Pencil :size="12" /></button>
     <section class="activity-section"><div class="section-heading"><h2>Atividades <span>{{ task.activities.length }}</span></h2><span class="muted small">{{ task.completed_count }} de {{ task.activities.length }} concluídas</span></div><div class="progress-track"><span :style="{width:progress+'%'}" :class="{complete:progress===100}"></span></div>
      <div v-if="!task.activities.length" class="activity-empty"><div class="empty-symbol"><Sparkles :size="26" /></div><h3>Um passo de cada vez.</h3><p>Divida sua task em pequenas atividades.<br>O primeiro passo começa aqui embaixo.</p></div>
      <div v-sortable="reorder" class="activity-list" :class="{'is-saving':state.saving}">

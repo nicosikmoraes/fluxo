@@ -46,9 +46,12 @@ O PHP portátil, as dependências e a interface compilada já estão nesta pasta
 - Arraste pelo ícone de pontos para ordenar cards dentro da coluna e atividades dentro da task. As atividades definem a coluna da task.
 - Use a busca por título, descrição, atividade ou pessoa. Os filtros permitem ver status e tasks com bloqueio.
 - A aba Projetos reúne os projetos e seus quadros. Projetos são opcionais.
+- Abra **Calendário** na lateral para ver suas tasks no dia da entrega. Filtre por projeto, navegue pelos meses e arraste cards entre dias. Tasks sem data ficam na lateral; arraste-as para um dia para agendar, ou leve um card de volta à lateral para remover a data. O botão **+** de cada dia cria uma task com essa data. Também é possível definir a data no formulário da task ou pelo ícone de calendário do card.
 - Dentro de um projeto, abra a aba **Roadmap**. Crie quantos mapas quiser e escolha o mapa pelo seletor no topo. Você pode renomear e excluir cada mapa.
 - Arraste atividades da lateral para o quadro ou use o botão **+** do card. Mova os cards pela faixa superior. O quadro cresce horizontalmente e as posições são salvas automaticamente.
 - Ligue o ponto à direita de um card ao ponto à esquerda de outro, arrastando ou clicando nos dois pontos. As setas indicam a ordem e permitem ramificações. Clique numa seta e em **Remover conexão** para desfazer a ligação.
+- Com uma conexão iniciada pelo ponto à direita de um card, dê dois cliques no espaço vazio para criar uma atividade. O modal sugere a task do card de origem; ao salvar, a nova atividade aparece nesse ponto do mapa já conectada ao card de origem.
+- Para cancelar uma conexão em andamento, clique com o botão direito no roadmap ou pressione **Esc**.
 - Arraste o fundo para navegar. Use os controles de zoom, **Ctrl + rolagem** ou **Mostrar todos os cards**. Cards também podem ser movidos com as setas do teclado quando estiverem selecionados.
 - A mesma atividade pode aparecer em vários mapas. Remover um card ou excluir um mapa preserva as atividades nas tasks. Clicar no título ou nos comentários de um card abre seus detalhes. A ordem do roadmap antigo é preservada como cards conectados no **Roadmap principal**.
 - Escolha uma capa ilustrada para o projeto ou envie uma imagem. Tasks também podem receber imagens opcionais, até 8 MB em JPG, PNG, WebP ou GIF.

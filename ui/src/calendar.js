@@ -1,0 +1,4 @@
+export function dateKey(date){return `${String(date.getFullYear()).padStart(4,'0')}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;}
+export function parseDay(key){const [year,month,day]=key.split('-').map(Number);const date=new Date(0);date.setFullYear(year,month-1,day);date.setHours(12,0,0,0);return date;}
+export function monthDays(month){const start=new Date(month);start.setDate(1);start.setHours(12,0,0,0);start.setDate(start.getDate()-(start.getDay()+6)%7);return Array.from({length:42},(_,i)=>{const date=new Date(start);date.setDate(start.getDate()+i);return {key:dateKey(date),date,day:date.getDate(),outside:date.getMonth()!==month.getMonth(),weekend:date.getDay()===0||date.getDay()===6};});}
+export function deliveryLabel(key){return key?new Intl.DateTimeFormat('pt-BR',{day:'numeric',month:'long',year:'numeric'}).format(parseDay(key)):'Sem data de entrega';}

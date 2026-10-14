@@ -3,7 +3,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 class Task extends Model {
-    protected $fillable=['title','description','project_id','position','cover_path'];
+    protected $fillable=['title','description','project_id','position','cover_path','due_date'];
+    protected function casts(): array { return ['due_date'=>'date:Y-m-d']; }
     protected $appends=['status','completed_count','blocked_count','comments_count'];
     public function activities(): HasMany { return $this->hasMany(Activity::class)->orderBy('position')->orderBy('id'); }
     public function getStatusAttribute(): string {

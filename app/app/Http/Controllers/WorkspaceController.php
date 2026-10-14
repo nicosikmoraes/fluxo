@@ -8,7 +8,7 @@ class WorkspaceController extends Controller {
     public function index() { return response()->json(['projects'=>Project::orderBy('id')->get(),'tasks'=>Task::with('activities.comments')->orderBy('position')->orderBy('id')->get(),'roadmaps'=>Roadmap::with('nodes','edges')->orderBy('id')->get()]); }
     private function imageRules(): array { return ['nullable','string','regex:#^/storage/images/[a-zA-Z0-9]+\.(jpg|jpeg|png|webp|gif)$#']; }
     private function projectData(Request $r): array { return $r->validate(['title'=>['required','string','max:160'],'cover'=>['required',Rule::in(['desk','violet','mint','peach'])],'cover_path'=>$this->imageRules()]); }
-    private function taskData(Request $r): array { return $r->validate(['title'=>['required','string','max:200'],'description'=>['nullable','string','max:20000'],'project_id'=>['nullable','integer','exists:projects,id'],'cover_path'=>$this->imageRules()]); }
+    private function taskData(Request $r): array { return $r->validate(['title'=>['required','string','max:200'],'description'=>['nullable','string','max:20000'],'project_id'=>['nullable','integer','exists:projects,id'],'cover_path'=>$this->imageRules(),'due_date'=>['nullable','date_format:Y-m-d']]); }
     private function removeImage(?string $url): void { if($url && str_starts_with($url,'/storage/images/')) Storage::disk('public')->delete(substr($url,9)); }
     public function createProject(Request $r) { return response()->json(Project::create($this->projectData($r)),201); }
     public function updateProject(Request $r,Project $project) { $d=$this->projectData($r); if($project->cover_path!==($d['cover_path']??null)) $this->removeImage($project->cover_path); $project->update($d); return $project; }
@@ -36,6 +36,10 @@ class WorkspaceController extends Controller {
         return $task->load('activities.comments');
     }
     public function deleteTask(Task $task) { $this->removeImage($task->cover_path); $task->delete(); return response()->noContent(); }
+    public function scheduleTask(Request $r,Task $task) {
+        $task->update($r->validate(['due_date'=>['present','nullable','date_format:Y-m-d']]));
+        return $task->load('activities.comments');
+    }
     private function nextRoadmapPosition(?int $projectId, ?int $excludeTask=null): int {
         return (Activity::whereHas('task',function($query) use($projectId,$excludeTask) {
             $query->where('project_id',$projectId);

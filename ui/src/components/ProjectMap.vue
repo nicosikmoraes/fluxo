@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue';
 import { Plus, Search, X, GripVertical, ArrowRight, MessageSquare, LockKeyhole, Map as MapIcon, Pencil, Trash2, ZoomIn, ZoomOut, Scan, MousePointer2, Unplug, Hand, Check } from '@lucide/vue';
 import { state, mutate, label } from '../workspace';
 import Modal from './Modal.vue';
@@ -7,10 +7,11 @@ import ConfirmDialog from './ConfirmDialog.vue';
 const props=defineProps({projectId:Number});
 const emit=defineEmits(['open-activity','new-task']);
 const selected=ref(null), search=ref(''), viewport=ref(null), form=ref(null), title=ref(''), removingMap=ref(false);
-const adding=ref(false), activityTitle=ref(''), taskId=ref(null);
+const adding=ref(false), activityTitle=ref(''), taskId=ref(null), activityConnection=ref(null);
 const camera=reactive({x:40,y:40,zoom:1}), cameras=new Map();
 const drafts=reactive({}), gesture=ref(null), source=ref(null), ghost=ref(null), selectedEdge=ref(null);
 const WIDTH=272, HEIGHT=184;
+const VIEW_MARGIN=32;
 const maps=computed(()=>state.roadmaps.filter(m=>m.project_id===props.projectId));
 const current=computed(()=>maps.value.find(m=>m.id===Number(selected.value)));
 const tasks=computed(()=>state.tasks.filter(t=>t.project_id===props.projectId));
@@ -22,7 +23,7 @@ const available=computed(()=>activities.value.filter(a=>!nodes.value.some(n=>n.a
 const world=computed(()=>({width:Math.max(2400,...nodes.value.map(n=>n.x+WIDTH+600)),height:Math.max(1200,...nodes.value.map(n=>n.y+HEIGHT+400))}));
 const edges=computed(()=>(current.value?.edges||[]).filter(e=>byNode.value.has(e.source_node_id)&&byNode.value.has(e.target_node_id)));
 watch(()=>maps.value.map(m=>m.id).join(','),()=>{if(!maps.value.some(m=>m.id===Number(selected.value))) selected.value=maps.value[0]?.id??null;},{immediate:true});
-watch(selected,(id,old)=>{if(old)cameras.set(Number(old),{...camera});Object.assign(camera,cameras.get(Number(id))||{x:40,y:40,zoom:1});cancelGesture();source.value=null;selectedEdge.value=null;});
+watch(selected,async(id,old)=>{if(old)cameras.set(Number(old),{...camera});const saved=cameras.get(Number(id));Object.assign(camera,saved||{x:40,y:40,zoom:1});cancelGesture();source.value=null;selectedEdge.value=null;adding.value=false;activityConnection.value=null;await nextTick();if(id===selected.value&&viewport.value&&!saved)fit();},{immediate:true});
 const url=()=>'/roadmaps/'+current.value.id;
 function worldPoint(clientX,clientY){const r=viewport.value.getBoundingClientRect();return {x:(clientX-r.left-camera.x)/camera.zoom,y:(clientY-r.top-camera.y)/camera.zoom};}
 const clamp=n=>Math.min(1000000,Math.max(0,Math.round(n)));
@@ -32,38 +33,71 @@ const draftPath=computed(()=>{const n=byNode.value.get(source.value);return n&&g
 function openMapForm(edit=false){title.value=edit?current.value.title:'';form.value=edit?'edit':'create';}
 async function saveMap(){if(state.saving||!title.value.trim())return;const editing=form.value==='edit';const result=await mutate(editing?url():'/projects/'+props.projectId+'/roadmaps',editing?'PATCH':'POST',{title:title.value.trim()},editing?'Nome do roadmap atualizado.':'Roadmap criado.');if(result){selected.value=result.id;form.value=null;}}
 async function deleteMap(){if(state.saving)return;const result=await mutate(url(),'DELETE',null,'Roadmap excluído.');if(result)removingMap.value=false;}
-async function addCard(activityId,point){if(!current.value||state.saving)return;const r=viewport.value.getBoundingClientRect();const p=point||worldPoint(r.left+60,r.top+100);p.x=clamp(p.x);p.y=clamp(p.y);if(!point){while(nodes.value.some(n=>Math.abs(n.x-p.x)<WIDTH+25&&Math.abs(n.y-p.y)<HEIGHT+25))p.x+=WIDTH+70;}const result=await mutate(url()+'/nodes','POST',{activity_id:activityId,x:clamp(p.x),y:clamp(p.y)});if(result&&!point&&(p.x*camera.zoom+camera.x+WIDTH*camera.zoom>r.width-20)){camera.x=50-p.x*camera.zoom;}}
+async function addCard(activityId,point){if(!current.value||state.saving)return;const r=viewport.value.getBoundingClientRect();const p=point||worldPoint(r.left+60,r.top+100);p.x=clamp(p.x);p.y=clamp(p.y);if(!point){while(nodes.value.some(n=>Math.abs(n.x-p.x)<WIDTH+25&&Math.abs(n.y-p.y)<HEIGHT+25))p.x+=WIDTH+70;}const result=await mutate(url()+'/nodes','POST',{activity_id:activityId,x:clamp(p.x),y:clamp(p.y)});if(result)revealCard(result);}
 function dragAvailable(e,a){e.dataTransfer.setData('application/x-fluxo-activity',String(a.id));e.dataTransfer.effectAllowed='copy';}
 function drop(e){const id=Number(e.dataTransfer.getData('application/x-fluxo-activity'));if(available.value.some(a=>a.id===id))addCard(id,worldPoint(e.clientX,e.clientY));}
 function capture(e){if(e.pointerId!=null)e.currentTarget.setPointerCapture?.(e.pointerId);}
 function startMove(e,node){if(e.button!==0||state.saving||source.value)return;e.preventDefault();e.stopPropagation();selectedEdge.value=null;gesture.value={kind:'move',id:node.id,map:current.value.id,start:worldPoint(e.clientX,e.clientY),x:node.x,y:node.y,moved:false};capture(e);}
 function startPan(e){if(e.button!==0||e.target.closest('.map-node,.map-edge-hit,.map-overlay'))return;selectedEdge.value=null;gesture.value={kind:'pan',startX:e.clientX,startY:e.clientY,x:camera.x,y:camera.y};capture(e);}
-function beginConnection(e,node){if(state.saving)return;e.preventDefault();e.stopPropagation();source.value=node.id;ghost.value={x:node.x+WIDTH+100,y:node.y+92};gesture.value={kind:'connect'};capture(e);}
+function beginConnection(e,node){if(state.saving||(e.button!=null&&e.button!==0))return;e.preventDefault();e.stopPropagation();source.value=node.id;ghost.value={x:node.x+WIDTH+100,y:node.y+92};gesture.value={kind:'connect'};capture(e);}
 function keyboardConnection(e,node){if(e.detail===0)beginConnection(e,node);}
 function pointerMove(e){const g=gesture.value;if(source.value)ghost.value=worldPoint(e.clientX,e.clientY);if(!g)return;if(g.kind==='pan'){camera.x=g.x+e.clientX-g.startX;camera.y=g.y+e.clientY-g.startY;}if(g.kind==='move'){const p=worldPoint(e.clientX,e.clientY);drafts[g.id]={x:clamp(g.x+p.x-g.start.x),y:clamp(g.y+p.y-g.start.y)};g.moved=true;}}
-async function pointerUp(e){const g=gesture.value;gesture.value=null;if(!g)return;if(g.kind==='connect'){const target=document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-input]');if(target)await connect(Number(target.dataset.input));}if(g.kind==='move'&&g.moved){await mutate('/roadmaps/'+g.map+'/nodes/'+g.id,'PATCH',drafts[g.id]);delete drafts[g.id];}}
+async function pointerUp(e){if(e.button!==0)return;const g=gesture.value;gesture.value=null;if(!g)return;if(g.kind==='connect'){const target=document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-input]');if(target)await connect(Number(target.dataset.input));}if(g.kind==='move'&&g.moved){const result=await mutate('/roadmaps/'+g.map+'/nodes/'+g.id,'PATCH',drafts[g.id]);delete drafts[g.id];if(g.map===current.value?.id)revealCard(result||byNode.value.get(g.id));}}
 function cancelGesture(){if(gesture.value?.kind==='move')delete drafts[gesture.value.id];gesture.value=null;}
+function cancelConnection(){source.value=null;ghost.value=null;cancelGesture();}
+function cancelConnectionWithMouse(e){if(!source.value)return;e.preventDefault();cancelConnection();}
 async function connect(id){if(!source.value||source.value===id||state.saving)return;const from=source.value;source.value=null;ghost.value=null;await mutate(url()+'/edges','POST',{source_node_id:from,target_node_id:id});}
 async function removeCard(n){if(state.saving)return;if(source.value===n.id)source.value=null;await mutate(url()+'/nodes/'+n.id,'DELETE',null,'Card removido do mapa. A atividade continua na task.');}
 async function removeEdge(){if(!selectedEdge.value||state.saving)return;const id=selectedEdge.value;const result=await mutate(url()+'/edges/'+id,'DELETE');if(result)selectedEdge.value=null;}
 function zoom(value,anchor){const z=Math.max(.35,Math.min(1.8,value));const rect=viewport.value.getBoundingClientRect();const p=anchor||{x:rect.width/2,y:rect.height/2};const ratio=z/camera.zoom;camera.x=p.x-(p.x-camera.x)*ratio;camera.y=p.y-(p.y-camera.y)*ratio;camera.zoom=z;}
 function wheel(e){if(e.ctrlKey||e.metaKey){const rect=viewport.value.getBoundingClientRect();zoom(camera.zoom*Math.exp(-e.deltaY*.002),{x:e.clientX-rect.left,y:e.clientY-rect.top});}else{camera.x-=e.shiftKey?e.deltaY:e.deltaX;camera.y-=e.shiftKey?0:e.deltaY;}}
-function fit(){if(!nodes.value.length){Object.assign(camera,{x:40,y:40,zoom:1});return;}const minX=Math.min(...nodes.value.map(n=>n.x)),minY=Math.min(...nodes.value.map(n=>n.y));const width=Math.max(...nodes.value.map(n=>n.x+WIDTH))-minX,height=Math.max(...nodes.value.map(n=>n.y+HEIGHT))-minY;const rect=viewport.value.getBoundingClientRect();camera.zoom=Math.max(.35,Math.min(1.2,(rect.width-100)/width,(rect.height-120)/height));camera.x=(rect.width-width*camera.zoom)/2-minX*camera.zoom;camera.y=(rect.height-height*camera.zoom)/2-minY*camera.zoom;}
-function keydown(e){if(e.key==='Escape'){source.value=null;ghost.value=null;selectedEdge.value=null;cancelGesture();}if((e.key==='Delete'||e.key==='Backspace')&&selectedEdge.value&&!e.target.closest('input,textarea,select')){e.preventDefault();removeEdge();}}
-async function keyMove(e,n){if(e.target!==e.currentTarget||state.saving)return;const delta={ArrowLeft:[-20,0],ArrowRight:[20,0],ArrowUp:[0,-20],ArrowDown:[0,20]}[e.key];if(!delta)return;e.preventDefault();await mutate(url()+'/nodes/'+n.id,'PATCH',{x:clamp(n.x+delta[0]),y:clamp(n.y+delta[1])});}
-function newActivity(){taskId.value=tasks.value[0]?.id;activityTitle.value='';adding.value=true;}
-async function saveActivity(){if(state.saving||!activityTitle.value.trim())return;const result=await mutate('/tasks/'+Number(taskId.value)+'/activities','POST',{title:activityTitle.value.trim()});if(result){adding.value=false;await addCard(result.id);}}
+function revealCard(node){
+ if(!node||!viewport.value)return;
+ const rect=viewport.value.getBoundingClientRect();if(!rect.width||!rect.height)return;
+ const margin=Math.min(VIEW_MARGIN,rect.width/8,rect.height/8);
+ camera.zoom=Math.max(.35,Math.min(camera.zoom,(rect.width-margin*2)/WIDTH,(rect.height-margin*2)/HEIGHT));
+ const left=node.x*camera.zoom+camera.x,top=node.y*camera.zoom+camera.y;
+ const right=left+WIDTH*camera.zoom,bottom=top+HEIGHT*camera.zoom;
+ if(left<margin)camera.x+=margin-left;else if(right>rect.width-margin)camera.x-=right-(rect.width-margin);
+ if(top<margin)camera.y+=margin-top;else if(bottom>rect.height-margin)camera.y-=bottom-(rect.height-margin);
+}
+function fit(){if(!viewport.value)return;if(!nodes.value.length){Object.assign(camera,{x:40,y:40,zoom:1});return;}const minX=Math.min(...nodes.value.map(n=>n.x)),minY=Math.min(...nodes.value.map(n=>n.y));const width=Math.max(...nodes.value.map(n=>n.x+WIDTH))-minX,height=Math.max(...nodes.value.map(n=>n.y+HEIGHT))-minY;const rect=viewport.value.getBoundingClientRect();if(!rect.width||!rect.height)return;camera.zoom=Math.max(.35,Math.min(1.2,(rect.width-VIEW_MARGIN*2)/width,(rect.height-VIEW_MARGIN*2)/height));camera.x=(rect.width-width*camera.zoom)/2-minX*camera.zoom;camera.y=(rect.height-height*camera.zoom)/2-minY*camera.zoom;}
+function keydown(e){if(e.key==='Escape'){cancelConnection();selectedEdge.value=null;}if((e.key==='Delete'||e.key==='Backspace')&&selectedEdge.value&&!e.target.closest('input,textarea,select')){e.preventDefault();removeEdge();}}
+async function keyMove(e,n){if(e.target!==e.currentTarget||state.saving)return;const delta={ArrowLeft:[-20,0],ArrowRight:[20,0],ArrowUp:[0,-20],ArrowDown:[0,20]}[e.key];if(!delta)return;e.preventDefault();const result=await mutate(url()+'/nodes/'+n.id,'PATCH',{x:clamp(n.x+delta[0]),y:clamp(n.y+delta[1])});if(result)revealCard(result);}
+function newActivity(){activityConnection.value=null;taskId.value=tasks.value[0]?.id;activityTitle.value='';adding.value=true;}
+function createAtConnection(e){
+ if(!source.value||!current.value||state.saving||adding.value||e.target.closest('.map-node,.map-edge-hit,.map-overlay'))return;
+ const origin=byNode.value.get(source.value);if(!origin)return;
+ e.preventDefault();cancelGesture();
+ const point=worldPoint(e.clientX,e.clientY);
+ activityConnection.value={roadmapId:current.value.id,sourceNodeId:origin.id,sourceTitle:origin.activity.title,x:clamp(point.x),y:clamp(point.y)};
+ taskId.value=origin.activity.task.id;activityTitle.value='';ghost.value=point;adding.value=true;
+}
+function closeActivity(){if(state.saving)return;adding.value=false;activityConnection.value=null;}
+async function saveActivity(){
+ if(state.saving||!activityTitle.value.trim())return;
+ const connection=activityConnection.value;
+ if(connection){
+  const result=await mutate('/roadmaps/'+connection.roadmapId+'/activities','POST',{
+   title:activityTitle.value.trim(),task_id:Number(taskId.value),source_node_id:connection.sourceNodeId,x:connection.x,y:connection.y,
+  },'Atividade criada e conectada.');
+  if(result){adding.value=false;activityConnection.value=null;source.value=null;ghost.value=null;revealCard({x:connection.x,y:connection.y});}
+  return;
+ }
+ const result=await mutate('/tasks/'+Number(taskId.value)+'/activities','POST',{title:activityTitle.value.trim()});
+ if(result){adding.value=false;await addCard(result.id);}
+}
 onBeforeUnmount(cancelGesture);
 </script>
 <template>
- <section class="project-map" aria-label="Mapas de desenvolvimento">
+ <section class="project-map" aria-label="Mapas de desenvolvimento" @contextmenu.capture="cancelConnectionWithMouse">
   <header class="maps-heading"><div class="maps-title"><span class="maps-symbol"><MapIcon :size="24" /></span><div><span class="eyebrow">SEU MUNDO DE IDEIAS</span><h3>Mapas de desenvolvimento</h3><p>Posicione suas atividades e conecte o que vem depois.</p></div></div><button class="btn primary" @click="openMapForm()"><Plus :size="16" />Novo roadmap</button></header>
   <div v-if="!current" class="maps-empty"><div class="maps-empty-cards"><span>Ideia</span><ArrowRight :size="28" /><span>Construção</span><ArrowRight :size="28" /><span>Entrega</span></div><h3>Um espaço livre para seu próximo caminho.</h3><p>Crie um roadmap, arraste atividades e ligue os cards com setas.<br>Você pode ter vários mapas neste projeto.</p><button class="btn primary" @click="openMapForm()"><Plus :size="16" />Criar primeiro roadmap</button></div>
   <template v-else>
    <div class="maps-bar"><div class="maps-picker"><MapIcon :size="16" /><select v-model="selected" aria-label="Roadmap atual"><option v-for="m in maps" :key="m.id" :value="m.id">{{ m.title }}</option></select><button class="icon-btn" aria-label="Renomear roadmap" title="Renomear roadmap" @click="openMapForm(true)"><Pencil :size="14" /></button><button class="icon-btn" aria-label="Excluir roadmap" title="Excluir roadmap" @click="removingMap=true"><Trash2 :size="14" /></button></div><span class="maps-count">{{ nodes.length }} cards · {{ edges.length }} conexões</span><span class="maps-save">{{ state.saving?'Salvando...':'Salvo automaticamente' }}</span></div>
    <div class="maps-workspace">
     <aside class="maps-palette" aria-label="Atividades disponíveis"><header><div><span class="eyebrow">ADICIONE AO MAPA</span><h4>Suas atividades <span>{{ available.length }}</span></h4></div><button class="icon-btn" :aria-label="tasks.length?'Nova atividade':'Criar task'" @click="tasks.length?newActivity():emit('new-task')"><Plus :size="17" /></button></header><div class="maps-search"><Search :size="14" /><input v-model="search" placeholder="Buscar atividade..." aria-label="Buscar atividades para o mapa"></div><p class="palette-hint">Arraste um card para o quadro ou use +.</p><div class="palette-items"><article v-for="a in available" :key="a.id" class="palette-card" draggable="true" :class="{blocked:a.blocked}" @dragstart="dragAvailable($event,a)"><div class="palette-card-title"><GripVertical :size="13" /><strong>{{ a.title }}</strong><button class="icon-btn tiny" :disabled="!!state.saving" :aria-label="'Adicionar '+a.title+' ao mapa'" @click="addCard(a.id)"><Plus :size="15" /></button></div><small>{{ a.task.title }}</small><span class="map-status" :class="a.status">{{ label(a.status) }}</span><span v-if="a.blocked" class="palette-blocked"><LockKeyhole :size="11" />Aguardando {{ a.blocking_person }}</span></article><div v-if="!available.length" class="palette-empty"><Check v-if="activities.length&&!search" :size="22" /><Search v-else :size="22" /><p>{{ search?'Nenhuma atividade encontrada.':activities.length?'Todas as atividades já estão neste mapa.':'Crie atividades numa task para montar seu mapa.' }}</p><button v-if="!activities.length" class="text-btn" @click="tasks.length?newActivity():emit('new-task')">{{ tasks.length?'Criar atividade':'Criar uma task' }}</button></div></div><footer><MousePointer2 :size="13" />A mesma atividade pode estar em vários roadmaps.</footer></aside>
-    <div ref="viewport" class="maps-viewport" tabindex="0" aria-label="Quadro livre do roadmap. Arraste o fundo para navegar." :class="{'is-panning':gesture?.kind==='pan','is-connecting':source}" :style="{backgroundPosition:camera.x+'px '+camera.y+'px',backgroundSize:24*camera.zoom+'px '+24*camera.zoom+'px'}" @pointerdown="startPan" @pointermove="pointerMove" @pointerup="pointerUp" @pointercancel="cancelGesture" @dragover.prevent @drop.prevent="drop" @wheel.prevent="wheel" @keydown="keydown">
+    <div class="maps-stage"><div ref="viewport" class="maps-viewport" tabindex="0" aria-label="Quadro livre do roadmap. Arraste o fundo para navegar." :class="{'is-panning':gesture?.kind==='pan','is-connecting':source}" :style="{backgroundPosition:camera.x+'px '+camera.y+'px',backgroundSize:24*camera.zoom+'px '+24*camera.zoom+'px'}" @pointerdown="startPan" @pointermove="pointerMove" @pointerup="pointerUp" @pointercancel="cancelGesture" @dblclick="createAtConnection" @dragover.prevent @drop.prevent="drop" @wheel.prevent="wheel" @keydown="keydown">
      <div class="maps-world" :style="{width:world.width+'px',height:world.height+'px',transform:`translate(${camera.x}px,${camera.y}px) scale(${camera.zoom})`}">
       <svg class="maps-connections" :width="world.width" :height="world.height" aria-label="Conexões entre atividades"><defs><marker :id="'arrow-'+current.id" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M 0 1 L 8 5 L 0 9" fill="none" stroke="#839be0" stroke-width="2" /></marker></defs><g v-for="e in edges" :key="e.id"><path :d="edgePath(e)" class="map-edge" :class="{selected:selectedEdge===e.id}" :marker-end="`url(#arrow-${current.id})`" /><path :d="edgePath(e)" class="map-edge-hit" @pointerdown.stop @click.stop="selectedEdge=e.id" /></g><path v-if="draftPath" :d="draftPath" class="map-edge draft" :marker-end="`url(#arrow-${current.id})`" /></svg>
       <article v-for="n in nodes" :key="n.id" class="map-node" :class="{blocked:n.activity.blocked,completed:n.activity.status==='done',connecting:source===n.id}" :style="{left:n.x+'px',top:n.y+'px'}" tabindex="0" :aria-label="n.activity.title+'. Use as setas do teclado para mover o card.'" @keydown="keyMove($event,n)">
@@ -76,15 +110,15 @@ onBeforeUnmount(cancelGesture);
       </article>
      </div>
      <div v-if="!nodes.length" class="map-overlay map-guide"><span class="map-guide-icon"><MapIcon :size="32" /></span><h4>Este mundo é seu.</h4><p>Traga um card da lateral para começar.<br>Depois, mova e conecte suas ideias.</p></div>
-     <div v-if="source" class="map-overlay map-connection-tip"><ArrowRight :size="15" /><span>Clique na entrada à esquerda de outro card para conectar.</span><button class="icon-btn tiny" aria-label="Cancelar conexão" @pointerdown.stop @click="source=null;ghost=null"><X :size="14" /></button></div>
+     <div v-if="source" class="map-overlay map-connection-tip"><ArrowRight :size="15" /><span>Conecte a outro card ou dê dois cliques no espaço vazio para criar uma atividade. Botão direito para cancelar.</span><button class="icon-btn tiny" aria-label="Cancelar conexão" @pointerdown.stop @click="cancelConnection"><X :size="14" /></button></div>
      <div v-if="selectedEdge" class="map-overlay map-edge-actions"><span>Conexão selecionada</span><button class="text-btn" :disabled="!!state.saving" @pointerdown.stop @click="removeEdge"><Unplug :size="14" />Remover conexão</button><button class="icon-btn tiny" aria-label="Desmarcar conexão" @pointerdown.stop @click="selectedEdge=null"><X :size="14" /></button></div>
-     <div class="map-overlay map-controls" @pointerdown.stop><button aria-label="Diminuir zoom" title="Diminuir zoom" @click="zoom(camera.zoom/1.2)"><ZoomOut :size="17" /></button><span>{{ Math.round(camera.zoom*100) }}%</span><button aria-label="Aumentar zoom" title="Aumentar zoom" @click="zoom(camera.zoom*1.2)"><ZoomIn :size="17" /></button><i></i><button aria-label="Mostrar todos os cards" title="Mostrar todos os cards" @click="fit"><Scan :size="17" /></button></div>
-     <div class="map-overlay map-navigation-hint"><Hand :size="13" />Arraste o fundo para explorar · Ctrl + rolagem para zoom</div>
+    </div>
+     <footer class="maps-canvas-footer"><div class="map-navigation-hint"><Hand :size="13" />Arraste o fundo para explorar · Ctrl + rolagem para zoom</div><div class="map-controls"><button aria-label="Diminuir zoom" title="Diminuir zoom" @click="zoom(camera.zoom/1.2)"><ZoomOut :size="17" /></button><span>{{ Math.round(camera.zoom*100) }}%</span><button aria-label="Aumentar zoom" title="Aumentar zoom" @click="zoom(camera.zoom*1.2)"><ZoomIn :size="17" /></button><i></i><button aria-label="Mostrar todos os cards" title="Mostrar todos os cards" @click="fit"><Scan :size="17" /></button></div></footer>
     </div>
    </div>
   </template>
  </section>
  <Modal v-if="form" :title="form==='edit'?'Renomear roadmap':'Novo roadmap'" @close="form=null"><form class="form-stack" @submit.prevent="saveMap"><label>Nome <span class="required">*</span><input v-model="title" required maxlength="160" autofocus placeholder="Ex.: Primeira versão, Próximas ideias..."></label><p class="muted small">Cada roadmap tem seus próprios cards e conexões.</p><footer class="modal-actions"><button type="button" class="btn secondary" @click="form=null">Cancelar</button><button class="btn primary" :disabled="!!state.saving">{{ form==='edit'?'Salvar nome':'Criar roadmap' }}</button></footer></form></Modal>
  <ConfirmDialog v-if="removingMap&&current" title="Excluir roadmap?" :message="'O mapa '+current.title+' e suas conexões serão excluídos. As atividades continuam nas tasks.'" @close="removingMap=false" @confirm="deleteMap" />
- <Modal v-if="adding" title="Nova atividade" @close="adding=false"><form class="form-stack" @submit.prevent="saveActivity"><label>Atividade <span class="required">*</span><input v-model="activityTitle" required maxlength="200" autofocus placeholder="O que você quer desenvolver?"></label><label>Task de origem<select v-model="taskId" required><option v-for="t in tasks" :key="t.id" :value="t.id">{{ t.title }}</option></select></label><footer class="modal-actions"><button type="button" class="btn secondary" @click="adding=false">Cancelar</button><button class="btn primary" :disabled="!!state.saving">Criar e adicionar ao mapa</button></footer></form></Modal>
+ <Modal v-if="adding" :title="activityConnection?'Nova atividade conectada':'Nova atividade'" @close="closeActivity"><form class="form-stack" @submit.prevent="saveActivity"><p v-if="activityConnection" class="muted small">Será conectada a <strong>{{ activityConnection.sourceTitle }}</strong> no ponto que você escolheu.</p><label>Atividade <span class="required">*</span><input v-model="activityTitle" required maxlength="200" autofocus placeholder="O que você quer desenvolver?"></label><label>Task de origem<select v-model="taskId" required><option v-for="t in tasks" :key="t.id" :value="t.id">{{ t.title }}</option></select></label><footer class="modal-actions"><button type="button" class="btn secondary" :disabled="!!state.saving" @click="closeActivity">Cancelar</button><button class="btn primary" :disabled="!!state.saving">{{ state.saving?'Criando...':activityConnection?'Criar e conectar':'Criar e adicionar ao mapa' }}</button></footer></form></Modal>
 </template>
