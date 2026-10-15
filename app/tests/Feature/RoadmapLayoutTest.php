@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\User;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -41,6 +42,7 @@ class RoadmapLayoutTest extends TestCase
 
     public function test_saves_and_restores_positions_without_changing_activities_or_connections(): void
     {
+        $this->actingAs(User::factory()->create());
         [$map, $nodes] = $this->roadmap();
         $edge = $this->postJson('/api/roadmaps/'.$map.'/edges', ['source_node_id' => $nodes[0]['id'], 'target_node_id' => $nodes[1]['id']])->assertCreated()->json('id');
         $positions = $this->positions($nodes);
@@ -55,6 +57,7 @@ class RoadmapLayoutTest extends TestCase
 
     public function test_rejects_outside_nodes_duplicate_ids_and_invalid_coordinates_without_partial_changes(): void
     {
+        $this->actingAs(User::factory()->create());
         [$map, $nodes] = $this->roadmap();
         [, $outside] = $this->roadmap();
         $positions = $this->positions($nodes);
@@ -71,6 +74,7 @@ class RoadmapLayoutTest extends TestCase
 
     public function test_refuses_a_stale_snapshot_or_incomplete_map_without_moving_any_node(): void
     {
+        $this->actingAs(User::factory()->create());
         [$map, $nodes] = $this->roadmap();
         $positions = $this->positions($nodes);
         $positions[1]['previous_x'] = 333;

@@ -1,13 +1,14 @@
 import { beforeEach, afterEach, describe, it, expect, vi } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 import { reactive } from 'vue';
-vi.mock('../src/workspace', () => ({ request: vi.fn(), notify: vi.fn(), state: reactive({ saving: 0 }) }));
+vi.mock('../src/workspace', () => ({ request: vi.fn(), notify: vi.fn(), state: reactive({ saving: 0, roadmaps: [] }), refresh: vi.fn() }));
+vi.mock('../src/auth', () => ({ auth: reactive({ user: { id: 1 } }) }));
 import { request, state } from '../src/workspace';
 import RoadmapAlignmentControls from '../src/components/RoadmapAlignmentControls.vue';
 let wrapper;
 const nodes = [{ id: 1, x: 10, y: 10 }, { id: 2, x: 355, y: 20 }];
 const button = text => wrapper.findAll('button').find(button => button.text() === text);
-beforeEach(() => { localStorage.clear(); vi.clearAllMocks(); state.saving = 0; request.mockImplementation(async (url, method, payload) => ({ nodes: payload.nodes.map(({ id, x, y }) => ({ id, x, y })) })); });
+beforeEach(() => { localStorage.clear(); vi.clearAllMocks(); state.saving = 0; state.roadmaps=[{id:7,nodes,portals:[]}]; request.mockImplementation(async (url, method, payload) => url.endsWith('/portals') ? ({portals:payload.portals,portals_version:payload.version+1}) : ({ nodes: payload.nodes.map(({ id, x, y }) => ({ id, x, y })) })); });
 afterEach(() => wrapper?.unmount());
 async function open() { wrapper = mount(RoadmapAlignmentControls, { props: { roadmapId: 7, nodes: nodes.map(node => ({ ...node })), portals: [] } }); }
 describe('Prévia e gravação do alinhamento', () => {
@@ -35,10 +36,10 @@ describe('Prévia e gravação do alinhamento', () => {
   await wrapper.setProps({ nodes: saved.nodes.map((node, index) => index ? node : { ...node, x: node.x + 20 }) }); expect(button('Desfazer alinhamento').attributes('disabled')).toBeDefined();
  });
  it('move portais somente após salvar cards e também restaura ao desfazer', async () => {
-  await open(); const portals = [{ id: 'p', label: '', x: 690, y: 80, sources: [2] }]; localStorage.setItem('fluxo:roadmap-portals:7', JSON.stringify(portals)); await wrapper.setProps({ portals });
-  await button('Alinhar cards').trigger('click'); expect(JSON.parse(localStorage.getItem('fluxo:roadmap-portals:7'))[0].y).toBe(80);
+  await open(); const portals = [{ id: 'p', label: '', x: 690, y: 80, sources: [2] }]; state.roadmaps[0].portals=portals; await wrapper.setProps({ portals });
+  await button('Alinhar cards').trigger('click'); expect(state.roadmaps[0].portals[0].y).toBe(80);
   await button('Aplicar').trigger('click'); await flushPromises(); const saved = wrapper.emitted('positions-saved')[0][0]; expect(saved.portals[0].y).toBe(59);
-  await wrapper.setProps({ nodes: saved.nodes, portals: JSON.parse(localStorage.getItem('fluxo:roadmap-portals:7')) });
-  await button('Desfazer alinhamento').trigger('click'); await flushPromises(); expect(JSON.parse(localStorage.getItem('fluxo:roadmap-portals:7'))).toEqual(portals);
+  await wrapper.setProps({ nodes: saved.nodes, portals: state.roadmaps[0].portals });
+  await button('Desfazer alinhamento').trigger('click'); await flushPromises(); expect(state.roadmaps[0].portals).toEqual(portals);
  });
 });

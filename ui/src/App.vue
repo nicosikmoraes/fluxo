@@ -1,7 +1,8 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
-import { Layers3, LayoutDashboard, FolderOpen, Plus, Search, ChevronRight, ArrowUpRight, Check, CheckCircle2, Circle, Clock3, LockKeyhole, MessageSquare, ListTodo, GripVertical, Pencil, Trash2, MoreHorizontal, Sparkles, X, PanelLeftClose, PanelLeftOpen, RefreshCw, Image, ArrowRight, Monitor, LoaderCircle, CalendarDays } from '@lucide/vue';
-import { state, load, mutate, label } from './workspace';
+import { Layers3, LayoutDashboard, FolderOpen, Plus, Search, ChevronRight, ArrowUpRight, Check, CheckCircle2, Circle, Clock3, LockKeyhole, MessageSquare, ListTodo, GripVertical, Pencil, Trash2, MoreHorizontal, Sparkles, X, PanelLeftClose, PanelLeftOpen, RefreshCw, Image, ArrowRight, Monitor, LoaderCircle, CalendarDays, LogOut } from '@lucide/vue';
+import { state, load, mutate, label, notify } from './workspace';
+import { auth, signOut } from './auth';
 import { vSortable } from './sortable';
 import TaskForm from './components/TaskForm.vue';
 import ProjectForm from './components/ProjectForm.vue';
@@ -40,6 +41,13 @@ async function reorder(ids){if(!state.saving)await mutate('/tasks/reorder','POST
 function clearFilters(){search.value='';blockedOnly.value=false;statusFilter.value='all';}
 const projectTasks=p=>state.tasks.filter(t=>t.project_id===p.id);
 const projectProgress=p=>{const list=projectTasks(p);return list.length?Math.round(list.filter(t=>t.status==='done').length/list.length*100):0;};
+const logoutBusy=ref(false);
+async function logout(){
+ if(logoutBusy.value || state.saving)return;
+ logoutBusy.value=true;
+ try{await signOut();}catch(error){notify(error.message,'error');}
+ finally{logoutBusy.value=false;}
+}
 onMounted(load);
 </script>
 <template>
@@ -55,7 +63,7 @@ onMounted(load);
    <div class="sidebar-bottom"><div class="sidebar-note"><Sparkles :size="18" /><strong>Passo a passo,<br>você chega lá.</strong><p>Uma ideia. Uma atividade.<br>Uma conquista de cada vez.</p><div class="note-decoration"><span></span><span></span><span></span></div></div><div class="local-footer"><span class="local-dot"></span> No seu computador <span class="local-version">v1.0</span></div></div>
   </aside>
   <div class="main-shell">
-   <header class="topbar"><div class="breadcrumb"><button class="icon-btn mobile-menu" aria-label="Abrir menu" @click="sidebarOpen=!sidebarOpen"><PanelLeftOpen :size="21" /></button><span>Meu espaço</span><ChevronRight :size="14" /><strong>{{ view==='daily'?'Meu dia':view==='calendar'?'Calendário':view==='projects'?'Projetos':currentProject?.title|| (selectedProject==='none'?'Sem projeto':'Meu quadro') }}</strong></div><div class="save-indicator"><LoaderCircle v-if="state.saving" :size="13" class="spin" /><Check v-else :size="13" /><span>{{ state.saving?'Salvando...':'Tudo salvo localmente' }}</span></div></header>
+   <header class="topbar"><div class="breadcrumb"><button class="icon-btn mobile-menu" aria-label="Abrir menu" @click="sidebarOpen=!sidebarOpen"><PanelLeftOpen :size="21" /></button><span>Meu espaço</span><ChevronRight :size="14" /><strong>{{ view==='daily'?'Meu dia':view==='calendar'?'Calendário':view==='projects'?'Projetos':currentProject?.title|| (selectedProject==='none'?'Sem projeto':'Meu quadro') }}</strong></div><div class="save-indicator"><LoaderCircle v-if="state.saving" :size="13" class="spin" /><Check v-else :size="13" /><span>{{ state.saving?'Salvando...':'Tudo salvo localmente' }}</span></div><div class="account-controls"><div class="account-identity" :title="auth.user?.email"><span class="account-avatar">{{ auth.user?.name?.slice(0,1).toUpperCase() }}</span><span class="truncate">{{ auth.user?.name }}</span></div><button class="account-exit" :disabled="logoutBusy || !!state.saving" @click="logout"><LogOut :size="15" /> {{ logoutBusy?'Saindo...':'Sair' }}</button></div></header>
    <main class="main-content">
     <section class="hero" :class="{'project-hero':currentProject,'calendar-hero':view==='calendar'}" :style="currentProject?.cover_path?{backgroundImage:'url('+currentProject.cover_path+')'}:undefined"><img v-if="!currentProject?.cover_path" :src="view==='calendar'?'/ui/calendar-garden.svg':'/ui/hero.png'" :alt="view==='calendar'?'Ilustração de um calendário entre plantas e ideias':'Ilustração de uma mesa criativa com notebook, plantas e caderno'" class="hero-image" :class="currentProject?.cover"><div class="hero-shade"></div><div class="hero-content"><span class="eyebrow"><span class="hero-dot"></span>{{ view==='daily'?'UM DIA PARA CADA PEQUENA CONQUISTA':view==='calendar'?'SEU CALENDÁRIO DE ENTREGAS':currentProject?'ESPAÇO DO PROJETO':'SEU ESPAÇO PARA FAZER ACONTECER' }}</span><h1>{{ view==='daily'?'Hoje, um passo de cada vez.':view==='calendar'?'Dê um dia às suas ideias.':currentProject?.title || (view==='projects'?'Toda ideia merece um espaço.':'Um passo de cada vez.') }}</h1><p>{{ view==='daily'?'Atividades de todos os projetos, no seu ritmo.':view==='calendar'?'Planeje suas entregas, encontre espaço e veja suas ideias avançarem.':currentProject?'Organize seus passos e acompanhe cada conquista.':view==='projects'?'Reúna suas tasks, dê forma às ideias e comece algo novo.':'Organize suas ideias. Desbloqueie seus próximos passos.' }}</p><div class="hero-date">{{ today }}</div></div></section>
     <template v-if="state.loading"><div class="loading-state"><LoaderCircle :size="28" class="spin" /><p>Abrindo seu espaço...</p></div></template>

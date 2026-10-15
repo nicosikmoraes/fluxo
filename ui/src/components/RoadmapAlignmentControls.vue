@@ -36,7 +36,6 @@ async function save(isUndo = false) {
  if (portalChanges) {
   storedPortals = readPortals(operation.roadmapId);
   if (layoutSignature([], storedPortals) !== layoutSignature([], expected.portals)) { notify('Os portais mudaram. Atualize a página antes de alinhar.', 'error'); return; }
-  if (!savePortals(operation.roadmapId, storedPortals)) { notify('O navegador não permitiu salvar os portais. O alinhamento não foi aplicado.', 'error'); return; }
  }
  saving.value = true; state.saving++;
  try {
@@ -44,7 +43,7 @@ async function save(isUndo = false) {
   let portalPositions = target.portals, portalsSaved = true;
   if (portalChanges) {
    const positions = new Map(target.portals.map(portal => [portal.id, portal]));
-   portalsSaved = savePortals(operation.roadmapId, storedPortals.map(portal => ({ ...portal, x: positions.get(portal.id).x, y: positions.get(portal.id).y })));
+   portalsSaved = await savePortals(operation.roadmapId, storedPortals.map(portal => ({ ...portal, x: positions.get(portal.id).x, y: positions.get(portal.id).y })));
    if (!portalsSaved) portalPositions = expected.portals;
   }
   if (props.roadmapId === operation.roadmapId) {
@@ -52,7 +51,7 @@ async function save(isUndo = false) {
    undo.value = isUndo ? null : { ...operation, after: { nodes: result.nodes, portals: portalPositions } };
   }
   emit('positions-saved', { roadmapId: operation.roadmapId, nodes: result.nodes, portals: portalPositions });
-  notify(portalsSaved ? (isUndo ? 'Alinhamento desfeito.' : 'Cards alinhados.') : 'Cards alinhados, mas o navegador não salvou as posições dos portais. Você pode desfazer.', portalsSaved ? 'success' : 'error');
+  notify(portalsSaved ? (isUndo ? 'Alinhamento desfeito.' : 'Cards alinhados.') : 'Cards alinhados, mas as posições dos portais não foram salvas. Você pode desfazer.', portalsSaved ? 'success' : 'error');
  } catch (error) { notify(error.message || 'Não foi possível salvar o alinhamento. Tente novamente.', 'error'); }
  finally { saving.value = false; state.saving--; }
 }

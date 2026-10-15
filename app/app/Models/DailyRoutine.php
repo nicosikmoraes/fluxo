@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\OwnedByUser;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class DailyRoutine extends Model
 {
     use HasFactory;
+    use OwnedByUser;
 
     protected $fillable = ['title', 'project_id', 'priority', 'starts_on', 'ends_on'];
 

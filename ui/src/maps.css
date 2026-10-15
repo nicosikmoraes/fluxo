@@ -62,6 +62,7 @@
 .map-selection-actions .text-btn{font-size:10px}
 
 .map-create-options{display:grid;gap:8px}
+.roadmap-card-type{margin:0;padding:0;border:0}.roadmap-card-type legend{margin:0 0 8px;padding:0;color:#596b8a;font-size:12px;font-weight:650}
 .map-create-option{display:flex;align-items:center;gap:12px;width:100%;padding:13px 14px;text-align:left;border:1px solid #e1e8f5;border-radius:12px;background:#fff;color:#7c8da8;transition:background .15s,border-color .15s}
 .map-create-option.activity{padding:17px 14px;background:#f5f8ff;border-color:#cedbf6}
 .map-create-option[aria-pressed="true"]{border-color:#91aae0;background:#edf3ff;box-shadow:0 0 0 2px #b4c9f51c;color:#617fb9}

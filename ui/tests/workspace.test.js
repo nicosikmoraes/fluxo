@@ -42,21 +42,30 @@ describe('Fluxo com a API real e banco isolado',()=>{
   await wrapper.find('.search-field input').setValue('endpoint');expect(wrapper.findAll('.task-card')).toHaveLength(1);
   await wrapper.find('.search-field input').setValue('');await wrapper.find('.filter-select').setValue('done');expect(wrapper.findAll('.task-card')).toHaveLength(1);expect(wrapper.find('.task-card').text()).toContain('Entrega final');expect(state.tasks).toHaveLength(2);
  }),
- it('organiza atividades de várias tasks no roadmap e mantém a sequência salva',async()=>{
+ it('mostra atividades de várias tasks nos cards do roadmap e salva novas inclusões',async()=>{
   const p=await api('/projects','POST',{title:'Meu roadmap',cover:'desk'});
   const t=await api('/tasks','POST',{title:'Backend',project_id:p.id});const other=await api('/tasks','POST',{title:'Frontend',project_id:p.id});
   const a=await api('/tasks/'+t.id+'/activities','POST',{title:'Modelar banco'});const b=await api('/tasks/'+other.id+'/activities','POST',{title:'Desenhar tela'});const c=await api('/tasks/'+t.id+'/activities','POST',{title:'Criar endpoints'});
+  const d=await api('/tasks/'+other.id+'/activities','POST',{title:'Integrar interface'});
   await api('/activities/'+a.id,'PATCH',{blocked:true,blocking_person:'Mariana',blocking_reason:'Aprovar o modelo'});
+  const roadmap=await api('/projects/'+p.id+'/roadmaps','POST',{title:'Entrega'});
+  const nodes=[];
+  for(const [index,activity] of [a,b,c].entries()) nodes.push(await api('/roadmaps/'+roadmap.id+'/nodes','POST',{activity_id:activity.id,x:80+index*340,y:100}));
+  await api('/roadmaps/'+roadmap.id+'/edges','POST',{source_node_id:nodes[0].id,target_node_id:nodes[1].id});
+  await api('/roadmaps/'+roadmap.id+'/edges','POST',{source_node_id:nodes[1].id,target_node_id:nodes[2].id});
   await start();await wrapper.find('.sidebar-projects .project-link').trigger('click');await wrapper.findAll('[role="tab"]')[1].trigger('click');
-  expect(wrapper.findAll('.roadmap-row')).toHaveLength(3);expect(wrapper.find('.roadmap-next').text()).toContain('Aguardando Mariana terminar');
-  await wrapper.findAll('.roadmap-move-up')[1].trigger('click');await wait(()=>expect(wrapper.find('.roadmap-title').text()).toBe('Desenhar tela'));
-  expect((await api('/workspace')).tasks.find(v=>v.id===t.id).activities.map(v=>v.id)).toEqual([a.id,c.id]);
-  // Reload the component from the API to verify the sequence persists.
-  wrapper.unmount();await start();await wrapper.find('.sidebar-projects .project-link').trigger('click');await wrapper.findAll('[role="tab"]')[1].trigger('click');expect(wrapper.find('.roadmap-title').text()).toBe('Desenhar tela');
-  await wrapper.find('.roadmap-search input').setValue('Mariana');expect(wrapper.findAll('.roadmap-row')).toHaveLength(1);expect(wrapper.find('.roadmap-move-up').attributes('disabled')).toBeDefined();await wrapper.find('.roadmap-search input').setValue('');
-  await button('Nova atividade').trigger('click');await wrapper.find('.modal input').setValue('Integrar interface');await wrapper.find('.modal select').setValue(String(other.id));await wrapper.find('.modal form').trigger('submit');
-  await wait(()=>expect(wrapper.findAll('.roadmap-row')).toHaveLength(4));expect(wrapper.findAll('.roadmap-title')[3].text()).toBe('Integrar interface');
-  await wrapper.findAll('.roadmap-title')[1].trigger('click');expect(wrapper.find('.task-title').text()).toBe('Backend');expect(wrapper.find('.comments-area').exists()).toBe(true);
+  expect(wrapper.findAll('.map-node')).toHaveLength(3);expect(wrapper.find('.map-node-blocked').text()).toContain('Mariana');
+  expect(wrapper.findAll('.maps-connections .map-edge')).toHaveLength(2);
+  await wrapper.find('.maps-search input').setValue('Integrar interface');
+  await wait(()=>expect(wrapper.findAll('.palette-card')).toHaveLength(1));
+  await wrapper.find('[aria-label="Adicionar Integrar interface ao mapa"]').trigger('click');
+  await wait(()=>expect(wrapper.findAll('.map-node')).toHaveLength(4));
+  expect((await api('/workspace')).tasks.find(v=>v.id===other.id).activities.map(v=>v.id)).toEqual([b.id,d.id]);
+  await wrapper.findAll('.map-node-title').find(title=>title.text()==='Desenhar tela').trigger('click');
+  expect(wrapper.find('.activity-parent-task').text()).toBe('Frontend');expect(wrapper.find('.add-activity').exists()).toBe(false);expect(wrapper.findAll('.activity-card')).toHaveLength(1);
+  // Reopen the project roadmap from the API and verify the four cards remain attached.
+  wrapper.unmount();await start();await wrapper.find('.sidebar-projects .project-link').trigger('click');await wrapper.findAll('[role="tab"]')[1].trigger('click');
+  expect(wrapper.findAll('.map-node-title').map(title=>title.text())).toEqual(expect.arrayContaining(['Modelar banco','Desenhar tela','Criar endpoints','Integrar interface']));
  }),
  it('exclui um projeto mantendo as tasks sem projeto',async()=>{
   const p=await api('/projects','POST',{title:'Projeto temporário',cover:'desk'});await api('/tasks','POST',{title:'Task preservada',project_id:p.id});await start();await wrapper.findAll('nav button')[1].trigger('click');

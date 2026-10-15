@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\OwnedByUser;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class DailyEntry extends Model
 {
     use HasFactory;
+    use OwnedByUser;
 
     protected $fillable = ['planned_for', 'activity_id', 'project_id', 'daily_routine_id', 'title', 'priority', 'focused', 'completed_at', 'removed_at', 'moved_to'];
 

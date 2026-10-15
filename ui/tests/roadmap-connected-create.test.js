@@ -1,8 +1,9 @@
 import { beforeEach, afterEach, describe, it, expect, vi } from 'vitest';
 import { reactive, nextTick } from 'vue';
 import { mount, flushPromises } from '@vue/test-utils';
-vi.mock('../src/workspace', () => ({ state: reactive({ roadmaps: [], tasks: [], saving: 0 }), mutate: vi.fn(), notify: vi.fn(), label: value => value }));
-import { state, mutate, notify } from '../src/workspace';
+vi.mock('../src/workspace', () => ({ state: reactive({ roadmaps: [], tasks: [], saving: 0 }), mutate: vi.fn(), request: vi.fn(), refresh: vi.fn(), notify: vi.fn(), label: value => value }));
+vi.mock('../src/auth', () => ({ auth: reactive({ user: { id: 1 } }) }));
+import { state, mutate, notify, request } from '../src/workspace';
 import { readPortals, savePortals } from '../src/roadmapPortals';
 import ProjectMap from '../src/components/ProjectMap.vue';
 import RoadmapPortals from '../src/components/RoadmapPortals.vue';
@@ -20,7 +21,7 @@ async function connect() {
  await canvas.trigger('dblclick', { clientX: 600, clientY: 300 });
 }
 beforeEach(async () => {
- localStorage.clear(); vi.clearAllMocks(); state.saving = 0; mutate.mockResolvedValue({ id: 99 });
+ localStorage.clear(); vi.clearAllMocks(); state.saving = 0; mutate.mockResolvedValue({ id: 99 }); request.mockImplementation(async (url,method,payload)=>({portals:payload.portals,portals_version:payload.version+1}));
  state.tasks = [{ id: 10, title: 'Construção', project_id: 7, activities: [{ id: 1, title: 'Origem', status: 'pending', blocked: false, comments: [] }] }];
  state.roadmaps = [{ id: 1, project_id: 7, title: 'Mapa', nodes: [{ id: 5, activity_id: 1, x: 10, y: 20 }], edges: [] }];
  await open();
@@ -65,12 +66,12 @@ describe('Criação a partir da linha de um card', () => {
   expect(dialog().exists()).toBe(true); expect(dialog().find('input').element.value).toBe('Etapa'); expect(wrapper.find('.map-edge.draft').exists()).toBe(true);
  });
  it('salva portal e conexão juntos; falha de armazenamento permite tentar de novo sem duplicar', async () => {
-  savePortals(1, [{ id: 'existing', label: 'Entrega', x: 900, y: 900, sources: [] }]);
+  await savePortals(1, [{ id: 'existing', label: 'Entrega', x: 900, y: 900, sources: [] }]);
   wrapper.unmount(); await open(); await connect(); await option('Portal').trigger('click');
-  const storage = localStorage; vi.stubGlobal('localStorage', { getItem: key => storage.getItem(key), setItem() { throw new Error('quota'); } });
+  request.mockRejectedValueOnce(new Error('Não foi possível salvar os portais.'));
   await submit(); expect(dialog().exists()).toBe(true); expect(wrapper.findAll('.map-portal')).toHaveLength(1);
   expect(readPortals(1)).toEqual([{ id: 'existing', label: 'Entrega', x: 900, y: 900, sources: [] }]);
-  expect(notify).toHaveBeenCalledWith('Não foi possível salvar os portais neste navegador.', 'error');
+  expect(notify).toHaveBeenCalledWith('Não foi possível salvar os portais.', 'error');
   expect(wrapper.find('.map-edge.draft').exists()).toBe(true); vi.unstubAllGlobals(); await submit();
   expect(readPortals(1)).toHaveLength(2); expect(readPortals(1)[0].label).toBe('Entrega'); expect(readPortals(1)[1].sources).toEqual([5]);
  });
@@ -84,7 +85,7 @@ describe('Criação a partir da linha de um card', () => {
   await connect(); await option('Portal').trigger('click'); state.saving = 1; await nextTick(); await submit();
   expect(readPortals(1)).toEqual([]); state.saving = 0; state.roadmaps[0].nodes = []; await nextTick(); await submit();
   expect(readPortals(1)).toEqual([]); expect(mutate).not.toHaveBeenCalled();
-  const portals = wrapper.findComponent(RoadmapPortals); expect(portals.vm.createConnected({ x: 200, y: 200 }, 5)).toBeNull();
+  const portals = wrapper.findComponent(RoadmapPortals); expect(await portals.vm.createConnected({ x: 200, y: 200 }, 5)).toBeNull();
  });
  it('fecha o modal ao trocar de roadmap sem gravar no outro mapa', async () => {
   state.roadmaps.push({ id: 2, project_id: 7, title: 'Outro', nodes: [], edges: [] }); await connect(); await option('Portal').trigger('click');

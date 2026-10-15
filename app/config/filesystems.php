@@ -73,8 +73,7 @@ return [
     |
     */
 
-    'links' => [
-        public_path('storage') => storage_path('app/public'),
-    ],
+    // As imagens do espaço passam pelas rotas autenticadas, inclusive as capas legadas.
+    'links' => [],
 
 ];

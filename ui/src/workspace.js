@@ -1,21 +1,17 @@
 import { reactive } from 'vue';
+import { apiRequest, auth } from './auth';
 export const state = reactive({ projects: [], tasks: [], roadmaps: [], loading: true, saving: 0, error: '', toast: null });
 let toastTimer;
 export function notify(message, kind = 'success') {
  clearTimeout(toastTimer); state.toast = { message, kind };
  toastTimer = setTimeout(() => state.toast = null, 4200);
 }
-export async function request(url, method = 'GET', data) {
- const form = data instanceof FormData;
- const response = await fetch('/api' + url, { method, headers: { Accept: 'application/json', ...(data && !form ? { 'Content-Type': 'application/json' } : {}) }, body: data ? (form ? data : JSON.stringify(data)) : undefined });
- if (!response.ok) {
-  const body = await response.json().catch(() => ({}));
-  throw new Error(body.errors ? Object.values(body.errors).flat().join(' ') : body.message || 'Não foi possível salvar. Tente novamente.');
- }
- return response.status === 204 ? true : response.json();
+export const request = apiRequest;
+export function resetWorkspace() {
+ clearTimeout(toastTimer); state.projects = []; state.tasks = []; state.roadmaps = []; state.error = ''; state.toast = null;
 }
 export async function refresh() {
- const data = await request('/workspace'); state.projects = data.projects; state.tasks = data.tasks; state.roadmaps = data.roadmaps || []; state.error = '';
+ const owner = auth.user?.id; const data = await request('/workspace'); if (auth.user?.id !== owner) return; state.projects = data.projects; state.tasks = data.tasks; state.roadmaps = data.roadmaps || []; state.error = '';
 }
 export async function load() {
  state.loading = true;
@@ -26,7 +22,7 @@ export async function mutate(url, method, data, message) {
  state.saving++;
  try { const result = await request(url, method, data); await refresh(); if (message) notify(message); return result; }
  catch (e) { notify(e.message, 'error'); return null; }
- finally { state.saving--; }
+ finally { state.saving = Math.max(0, state.saving - 1); }
 }
 export async function upload(file) {
  if (!file) return null;
