@@ -13,7 +13,9 @@ const displayMarkers = computed(() => markers.value.map(marker => ({ ...marker, 
 const byNode = computed(() => new Map(props.nodes.map(node => [node.id, node])));
 const links = computed(() => displayMarkers.value.flatMap(marker => marker.sources.filter(id => byNode.value.has(id)).map(id => ({ id: `${marker.id}:${id}`, marker, node: byNode.value.get(id) }))));
 function isDone(node) { return node?.activity?.status === 'done' && !node.activity.blocked; }
+function isInProgress(node) { return node?.activity?.status === 'doing' && !node.activity.blocked; }
 function finished(marker) { const nodes = marker.sources.map(id => byNode.value.get(id)).filter(Boolean); return nodes.length > 0 && nodes.every(isDone); }
+function inProgress(marker) { return marker.sources.some(id => isInProgress(byNode.value.get(id))); }
 function persist() { if (!savePortals(props.roadmapId, markers.value)) notify('Não foi possível salvar os portais neste navegador.', 'error'); }
 function openForm(point) {
  if (props.disabled) return;
@@ -74,11 +76,11 @@ function setPositions(positions) {
 defineExpose({ openForm, createConnected, connect, markers, setPositions, cancelMove });
 </script>
 <template>
- <svg class="maps-connections portal-connections" width="100%" height="100%" aria-label="Conexões com portais"><g v-for="link in links" :key="link.id"><path :d="path(link)" class="map-edge portal-link" :class="{finished:isDone(link.node)}"/><path :d="path(link)" class="portal-trail" :class="{finished:isDone(link.node)}" pathLength="100"/><path :d="path(link)" class="map-edge-hit" role="button" tabindex="0" aria-label="Remover conexão com portal" @pointerdown.stop @click.stop="removingLink=link" @keydown.enter.prevent.stop="removingLink=link" @keydown.space.prevent.stop="removingLink=link"/></g></svg>
- <article v-for="marker in displayMarkers" :key="marker.id" class="map-portal" :class="{finished:finished(marker)}" :style="{left:marker.x+'px',top:marker.y+'px'}" tabindex="0" :aria-label="(marker.label||'Portal sem texto')+'. Use as setas para mover.'" @keydown="keyMove($event,marker)">
+ <svg class="maps-connections portal-connections" width="100%" height="100%" aria-label="Conexões com portais"><g v-for="link in links" :key="link.id"><path :d="path(link)" class="map-edge portal-link" :class="{finished:isDone(link.node),'in-progress':isInProgress(link.node)}"/><path :d="path(link)" class="portal-trail" :class="{finished:isDone(link.node),'in-progress':isInProgress(link.node)}" pathLength="100"/><path :d="path(link)" class="map-edge-hit" role="button" tabindex="0" aria-label="Remover conexão com portal" @pointerdown.stop @click.stop="removingLink=link" @keydown.enter.prevent.stop="removingLink=link" @keydown.space.prevent.stop="removingLink=link"/></g></svg>
+ <article v-for="marker in displayMarkers" :key="marker.id" class="map-portal" :class="{finished:finished(marker),'in-progress':inProgress(marker)}" :style="{left:marker.x+'px',top:marker.y+'px'}" tabindex="0" :aria-label="(marker.label||'Portal sem texto')+(inProgress(marker)?'. Em andamento':finished(marker)?'. Concluído':'')+'. Use as setas para mover.'" @keydown="keyMove($event,marker)">
   <div class="map-portal-actions"><button class="icon-btn tiny" aria-label="Editar texto do portal" @pointerdown.stop @click="edit(marker)"><Pencil :size="13"/></button><button class="icon-btn tiny" aria-label="Remover portal" @pointerdown.stop @click="remove(marker)"><X :size="13"/></button></div>
   <button class="map-portal-input" :data-portal-input="marker.id" :aria-label="'Conectar ao portal '+(marker.label||'sem texto')" @pointerdown.stop @click.stop="connect(marker.id)"></button>
-  <div class="map-portal-symbol" @pointerdown.stop="startMove($event,marker)" @pointermove.stop="move" @pointerup.stop="endMove" @pointercancel.stop="cancelMove"><Flag :size="26" :stroke-width="1.6"/></div>
+  <div class="map-portal-symbol" @pointerdown.stop="startMove($event,marker)" @pointermove.stop="move" @pointerup.stop="endMove" @pointercancel.stop="cancelMove"><Flag :size="26" :stroke-width="1.6"/><span v-if="inProgress(marker)" class="map-portal-wave" aria-hidden="true"><i></i><i></i><i></i><i></i></span></div>
   <button v-if="marker.label" class="map-portal-label" @pointerdown.stop @click="edit(marker)">{{ marker.label }}</button>
  </article>
  <Teleport to="body">

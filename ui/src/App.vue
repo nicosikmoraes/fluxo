@@ -11,7 +11,7 @@ import ProjectRoadmap from './components/ProjectMap.vue';
 import TaskCalendar from './components/TaskCalendar.vue';
 import DailyList from './components/DailyList.vue';
 const view=ref('board');const selectedProject=ref('all');const search=ref('');const blockedOnly=ref(false);const statusFilter=ref('all');const sidebarOpen=ref(false);
-const projectView=ref('board');const openActivity=ref(null);
+const projectView=ref('board');const openActivity=ref(null);const activityOnly=ref(false);
 const taskForm=ref(null);const projectForm=ref(null);const openTask=ref(null);const deleting=ref(null);
 const columns=[{id:'pending',title:'Pendente',icon:Circle,description:'Ideias prontas para começar'},{id:'doing',title:'Em andamento',icon:Clock3,description:'Um passo mais perto'},{id:'done',title:'Concluída',icon:CheckCircle2,description:'Pequenas grandes conquistas'}];
 const currentProject=computed(()=>state.projects.find(p=>p.id===Number(selectedProject.value)));
@@ -28,7 +28,7 @@ const hasFilter=computed(()=>!!search.value||blockedOnly.value||statusFilter.val
 const today=new Intl.DateTimeFormat('pt-BR',{weekday:'long',day:'numeric',month:'long'}).format(new Date());
 function chooseProject(id){projectView.value='board';selectedProject.value=id;view.value='board';search.value='';blockedOnly.value=false;statusFilter.value='all';sidebarOpen.value=false;}
 function changeView(v){projectView.value='board';view.value=v;if(v==='calendar'||v==='daily')selectedProject.value='all';search.value='';sidebarOpen.value=false;}
-function showTask(id,activityId=null){openTask.value=id;openActivity.value=activityId;}
+function showTask(id,activityId=null,onlyActivity=false){openTask.value=id;openActivity.value=activityId;activityOnly.value=onlyActivity&&activityId!=null;}
 function newTask(dueDate=null,projectId=null){taskForm.value={task:null,dueDate,projectId};}
 function editTask(task){taskForm.value={task};}
 function askDeleteTask(task){deleting.value={type:'tasks',id:task.id,title:'Excluir task?',message:'“'+task.title+'” e todas as suas atividades e comentários serão excluídos.'};}
@@ -66,7 +66,7 @@ onMounted(load);
      <div v-if="view!=='daily'&&view!=='calendar'&&(projectView!=='roadmap'||!currentProject||view!=='board')" class="toolbar"><div class="search-field"><Search :size="17" /><input v-model="search" :placeholder="view==='projects'?'Buscar projetos...':'Buscar tasks, atividades ou pessoas...'" aria-label="Buscar"><button v-if="search" class="icon-btn tiny" aria-label="Limpar busca" @click="search=''"><X :size="14" /></button><span v-else class="search-key">⌕</span></div><template v-if="view==='board'"><div class="toolbar-filters"><button class="filter-pill" :class="{selected:!blockedOnly}" @click="blockedOnly=false">Todas <span>{{ scopedTasks.length }}</span></button><button class="filter-pill" :class="{selected:blockedOnly}" @click="blockedOnly=!blockedOnly"><LockKeyhole :size="13" /> Com bloqueio <span>{{ blockedCount }}</span></button></div><select v-model="statusFilter" class="filter-select" aria-label="Filtrar por status"><option value="all">Todos os status</option><option value="pending">Pendentes</option><option value="doing">Em andamento</option><option value="done">Concluídas</option></select></template></div>
      <DailyList v-if="view==='daily'" @open-task="showTask" />
      <TaskCalendar v-else-if="view==='calendar'" @open-task="showTask" @new-task="newTask" />
-     <ProjectRoadmap v-else-if="view==='board'&&currentProject&&projectView==='roadmap'" :key="currentProject.id" :project-id="currentProject.id" @open-activity="showTask" @new-task="newTask" />
+     <ProjectRoadmap v-else-if="view==='board'&&currentProject&&projectView==='roadmap'" :key="currentProject.id" :project-id="currentProject.id" @open-activity="(taskId,activityId)=>showTask(taskId,activityId,true)" @new-task="newTask" />
      <template v-else-if="view==='board'">
       <div v-if="!scopedTasks.length&&!hasFilter" class="welcome-strip"><div class="welcome-symbol"><Sparkles :size="22" /></div><div><strong>Sua próxima ideia começa aqui.</strong><p>Crie uma task, divida em atividades e acompanhe seu progresso.</p></div><button class="text-btn" @click="newTask()">Criar primeira task <ArrowRight :size="15" /></button></div>
       <div v-if="hasFilter&&!visibleTasks.length" class="no-results"><Search :size="24" /><strong>Nenhuma task por aqui.</strong><p>Tente outro termo ou ajuste os filtros.</p><button class="text-btn" @click="clearFilters">Limpar filtros</button></div>
@@ -81,7 +81,7 @@ onMounted(load);
     </template>
    </main>
   </div>
-  <TaskPanel v-if="openTask&&state.tasks.some(t=>t.id===openTask)" :key="openTask" :task-id="openTask" :initial-activity-id="openActivity" @close="openTask=null" @edit="editTask" @delete="askDeleteTask" />
+  <TaskPanel v-if="openTask&&state.tasks.some(t=>t.id===openTask)" :key="openTask+':'+openActivity+':'+activityOnly" :task-id="openTask" :initial-activity-id="openActivity" :activity-only="activityOnly" @close="openTask=null" @edit="editTask" @delete="askDeleteTask" />
   <TaskForm v-if="taskForm" :task="taskForm.task" :project-id="taskForm.projectId??selectedProject" :due-date="taskForm.dueDate" @close="taskForm=null" @saved="taskSaved" />
   <ProjectForm v-if="projectForm" :project="projectForm.project" @close="projectForm=null" @saved="projectSaved" />
   <ConfirmDialog v-if="deleting" :title="deleting.title" :message="deleting.message" :project="deleting.project" @close="deleting=null" @confirm="deleteItem" />
