@@ -21,6 +21,15 @@ function openForm(point) {
  while (markers.value.some(marker => Math.abs(marker.x - x) < 180 && Math.abs(marker.y - y) < 150) || props.nodes.some(node => x < node.x + 292 && x + 180 > node.x && y < node.y + 204 && y + 150 > node.y)) x += 200;
  label.value = ''; form.value = { x, y };
 }
+function createConnected(point, source) {
+ if (props.disabled || !byNode.value.has(source)) return null;
+ const marker = { id: crypto.randomUUID(), label: '', x: Math.min(1000000, Math.max(0, Math.round(point.x - 80))), y: Math.min(1000000, Math.max(0, Math.round(point.y - 48))), sources: [source] };
+ const next = [...markers.value, marker];
+ if (!savePortals(props.roadmapId, next)) { notify('Não foi possível salvar os portais neste navegador.', 'error'); return null; }
+ markers.value = next;
+ emit('connected'); emit('reveal', { ...marker, width: 160, height: 110 });
+ return marker;
+}
 function edit(marker) { if (props.disabled) return; label.value = marker.label; form.value = { id: marker.id }; }
 function save() {
  if (form.value.id) { const marker = markers.value.find(marker => marker.id === form.value.id); if (marker) marker.label = label.value.trim(); }
@@ -62,7 +71,7 @@ function setPositions(positions) {
  const byId = new Map(positions.map(position => [position.id, position]));
  markers.value = markers.value.map(marker => { const position = byId.get(marker.id); return position ? { ...marker, x: position.x, y: position.y } : marker; });
 }
-defineExpose({ openForm, connect, markers, setPositions });
+defineExpose({ openForm, createConnected, connect, markers, setPositions, cancelMove });
 </script>
 <template>
  <svg class="maps-connections portal-connections" width="100%" height="100%" aria-label="Conexões com portais"><g v-for="link in links" :key="link.id"><path :d="path(link)" class="map-edge portal-link" :class="{finished:isDone(link.node)}"/><path :d="path(link)" class="portal-trail" :class="{finished:isDone(link.node)}" pathLength="100"/><path :d="path(link)" class="map-edge-hit" role="button" tabindex="0" aria-label="Remover conexão com portal" @pointerdown.stop @click.stop="removingLink=link" @keydown.enter.prevent.stop="removingLink=link" @keydown.space.prevent.stop="removingLink=link"/></g></svg>
