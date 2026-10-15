@@ -1,8 +1,11 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
+import { reactive } from 'vue';
 import { mount, flushPromises } from '@vue/test-utils';
 import { readPortals, savePortals } from '../src/roadmapPortals';
 import RoadmapPortals from '../src/components/RoadmapPortals.vue';
-vi.mock('../src/workspace', () => ({ notify: vi.fn(), state: { saving: 0 } }));
+vi.mock('../src/workspace', () => ({ notify: vi.fn(), request: vi.fn(), refresh: vi.fn(), state: reactive({ saving: 0, roadmaps: [] }) }));
+vi.mock('../src/auth', () => ({ auth: reactive({ user: { id: 1 } }) }));
+import { state, request } from '../src/workspace';
 let wrapper;
 async function open(roadmapId = 1) {
  wrapper = mount(RoadmapPortals, { global: { stubs: { teleport: true } }, props: { roadmapId, nodes: [{ id: 5, x: 10, y: 20 }], zoom: 1, sourceNodeId: 5 } });
@@ -12,9 +15,9 @@ async function add(label = '') {
  wrapper.vm.openForm({ x: 500, y: 200 }); await flushPromises();
  await wrapper.find('input').setValue(label); await wrapper.find('form').trigger('submit'); await flushPromises();
 }
-beforeEach(() => { wrapper = undefined; localStorage.clear(); });
+beforeEach(() => { wrapper = undefined; localStorage.clear(); vi.clearAllMocks(); state.saving=0; state.roadmaps=[{id:1,nodes:[{id:5},{id:6}],portals:[]},{id:2,nodes:[],portals:[]}]; request.mockImplementation(async (url,method,payload)=>({portals:payload.portals,portals_version:payload.version+1})); });
 afterEach(() => wrapper?.unmount());
-describe('Portais visuais sem acesso ao banco', () => {
+describe('Portais visuais salvos na conta', () => {
  it('adiciona vários portais, com texto opcional, e preserva ao reabrir', async () => {
   await open(); await add(); await add('Entrega do site');
   expect(wrapper.findAll('.map-portal')).toHaveLength(2); expect(wrapper.findAll('.map-portal-label')).toHaveLength(1);
@@ -22,16 +25,16 @@ describe('Portais visuais sem acesso ao banco', () => {
  });
  it('conecta atividades uma única vez, sem alterar seu status', async () => {
   await open(); await add(); const id = readPortals(1)[0].id;
-  wrapper.vm.connect(id, 5); wrapper.vm.connect(id, 5); await flushPromises();
+  await wrapper.vm.connect(id, 5); await wrapper.vm.connect(id, 5); await flushPromises();
   expect(readPortals(1)[0].sources).toEqual([5]); expect(wrapper.findAll('.portal-connections .map-edge')).toHaveLength(1);
   expect(wrapper.props('nodes')).toEqual([{ id: 5, x: 10, y: 20 }]);
   await wrapper.setProps({ nodes: [] }); expect(wrapper.findAll('.portal-connections .map-edge')).toHaveLength(0);
  });
  it('permite editar, remover o texto e excluir apenas o portal', async () => {
   await open(); await add('Entrega'); await wrapper.find('[aria-label="Editar texto do portal"]').trigger('click');
-  await wrapper.find('input').setValue(''); await wrapper.find('form').trigger('submit');
+  await wrapper.find('input').setValue(''); await wrapper.find('form').trigger('submit'); await flushPromises();
   expect(wrapper.find('.map-portal-label').exists()).toBe(false);
-  await wrapper.find('[aria-label="Remover portal"]').trigger('click'); expect(readPortals(1)).toEqual([]);
+  await wrapper.find('[aria-label="Remover portal"]').trigger('click'); await flushPromises(); expect(readPortals(1)).toEqual([]);
  });
  it('salva movimentação por teclado e isola os roadmaps', async () => {
   await open(); await add(); const x = readPortals(1)[0].x;
@@ -71,10 +74,10 @@ describe('Portais visuais sem acesso ao banco', () => {
   await wrapper.find('.map-edge-hit').trigger('click'); await wrapper.find('.modal .danger').trigger('click'); await flushPromises();
   expect(readPortals(1)[0].sources).toEqual([]); expect(wrapper.find('.portal-link').exists()).toBe(false);
  });
- it('ignora armazenamento inválido e informa falha de gravação', () => {
-  localStorage.setItem('fluxo:roadmap-portals:1', 'invalid'); expect(readPortals(1)).toEqual([]);
-  vi.stubGlobal('localStorage', { setItem() { throw new Error('blocked'); } });
-  expect(savePortals(1, [])).toBe(false); vi.unstubAllGlobals();
+ it('ignora dados inválidos e preserva o estado se o servidor recusar a gravação', async () => {
+  state.roadmaps[0].portals = 'invalid'; expect(readPortals(1)).toEqual([]);
+  request.mockRejectedValueOnce(new Error('Sem conexão.'));
+  expect(await savePortals(1, [])).toBe(false); expect(state.roadmaps[0].portals).toBe('invalid');
  });
  it('ativa o núcleo sem texto apenas para atividades conectadas em andamento e sem bloqueio', async () => {
   await open(); await add(); const id = readPortals(1)[0].id;

@@ -1,3 +1,4 @@
+import { createSessionClient } from './session-client.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import assert from 'node:assert/strict';
@@ -8,12 +9,12 @@ const base=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const app=path.join(base,'app');const php=path.join(base,'.runtime/php/php.exe');
 const temp=path.join(base,'tests/.runtime');fs.mkdirSync(temp,{recursive:true});
 const database=path.join(temp,randomUUID()+'.sqlite');fs.writeFileSync(database,'');
-const env={...process.env,APP_ENV:'testing',APP_DEBUG:'false',DB_DATABASE:database,SESSION_DRIVER:'array',CACHE_STORE:'array'};
+const env={...process.env,APP_ENV:'testing',APP_DEBUG:'false',DB_DATABASE:database,SESSION_DRIVER:'database',CACHE_STORE:'array'};
 const migration=spawnSync(php,['artisan','migrate','--force'],{cwd:app,env,encoding:'utf8'});
 if(migration.status){console.error(migration.stdout,migration.stderr);process.exit(1);}
 const port=Number(process.env.FLUXO_TEST_PORT||8002);
-const server=spawn(php,['-S','127.0.0.1:'+port,'-t','.',path.join(app,'vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php')],{cwd:path.join(app,'public'),env,stdio:'ignore',windowsHide:true});
-const url='http://127.0.0.1:'+port;let checks=0;
+const server=spawn(php,['-d','opcache.enable=0','-d','opcache.enable_cli=0','-S','127.0.0.1:'+port,'-t','.',path.join(app,'vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php')],{cwd:path.join(app,'public'),env,stdio:'ignore',windowsHide:true});
+const url='http://127.0.0.1:'+port;const fetch=createSessionClient(url);let checks=0;
 const check=(condition,message)=>{assert.ok(condition,message);checks++;};
 async function api(route,method='GET',data,expected=200,headers={}){
  const r=await fetch(url+'/api'+route,{method,headers:{Accept:'application/json',...(data?{'Content-Type':'application/json'}:{}),...headers},body:data?JSON.stringify(data):undefined});
@@ -23,7 +24,8 @@ const task=(extra={})=>api('/tasks','POST',{title:'Minha task',project_id:null,d
 const activity=(t,title='Passo')=>api('/tasks/'+t.id+'/activities','POST',{title},201);
 const workspace=()=>api('/workspace');
 try{
- let ready=false;for(let i=0;i<60;i++){try{if((await fetch(url+'/api/workspace')).ok){ready=true;break;}}catch{}await new Promise(r=>setTimeout(r,100));}check(ready,'Servidor de teste iniciou');
+ let ready=false;for(let i=0;i<60;i++){try{if((await fetch(url+'/api/auth/session')).ok){ready=true;break;}}catch{}await new Promise(r=>setTimeout(r,100));}check(ready,'Servidor de teste iniciou');
+ await api('/auth/register','POST',{name:'Conta de testes',email:'api@example.com',password:'senha de testes 123',password_confirmation:'senha de testes 123'},201);
  const root=await fetch(url);const rootBody=await root.text();check(root.ok,'Interface servida: '+root.status+' '+rootBody.slice(0,1000));check(rootBody.includes('/ui/assets/'),'Build integrado ao Laravel: '+rootBody.slice(0,1000));
  let t=await task();check(t.status==='pending','Task vazia pendente');
  let a=await activity(t,'Implementar API');let b=await activity(t,'Criar interface');

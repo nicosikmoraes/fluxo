@@ -1,14 +1,15 @@
 <script setup>
 import { computed, ref, watch } from 'vue';
 import { Flag, Pencil, X } from '@lucide/vue';
-import { notify } from '../workspace';
+import { state } from '../workspace';
 import { readPortals, savePortals } from '../roadmapPortals';
 import Modal from './Modal.vue';
 import ConfirmDialog from './ConfirmDialog.vue';
 const props = defineProps({ roadmapId: Number, nodes: Array, zoom: Number, sourceNodeId: Number, positions: { type: Object, default: () => ({}) }, disabled: Boolean });
 const emit = defineEmits(['connected', 'reveal']);
 const markers = ref([]), form = ref(null), label = ref(''), gesture = ref(null), removingLink = ref(null);
-watch(() => props.roadmapId, id => { markers.value = readPortals(id); form.value = null; gesture.value = null; removingLink.value = null; }, { immediate: true });
+watch(() => props.roadmapId, () => { form.value = null; gesture.value = null; removingLink.value = null; });
+watch(() => [props.roadmapId, state.roadmaps.find(roadmap => roadmap.id === props.roadmapId)?.portals], () => { markers.value = readPortals(props.roadmapId); }, { immediate: true });
 const displayMarkers = computed(() => markers.value.map(marker => ({ ...marker, ...props.positions[marker.id] })));
 const byNode = computed(() => new Map(props.nodes.map(node => [node.id, node])));
 const links = computed(() => displayMarkers.value.flatMap(marker => marker.sources.filter(id => byNode.value.has(id)).map(id => ({ id: `${marker.id}:${id}`, marker, node: byNode.value.get(id) }))));
@@ -16,33 +17,34 @@ function isDone(node) { return node?.activity?.status === 'done' && !node.activi
 function isInProgress(node) { return node?.activity?.status === 'doing' && !node.activity.blocked; }
 function finished(marker) { const nodes = marker.sources.map(id => byNode.value.get(id)).filter(Boolean); return nodes.length > 0 && nodes.every(isDone); }
 function inProgress(marker) { return marker.sources.some(id => isInProgress(byNode.value.get(id))); }
-function persist() { if (!savePortals(props.roadmapId, markers.value)) notify('Não foi possível salvar os portais neste navegador.', 'error'); }
+async function persist() { const id = props.roadmapId; const saved = await savePortals(id, markers.value); if (props.roadmapId === id) markers.value = readPortals(id); return saved; }
 function openForm(point) {
  if (props.disabled) return;
  let x = Math.max(0, Math.round(point.x - 80)), y = Math.max(0, Math.round(point.y - 48));
  while (markers.value.some(marker => Math.abs(marker.x - x) < 180 && Math.abs(marker.y - y) < 150) || props.nodes.some(node => x < node.x + 292 && x + 180 > node.x && y < node.y + 204 && y + 150 > node.y)) x += 200;
  label.value = ''; form.value = { x, y };
 }
-function createConnected(point, source) {
+async function createConnected(point, source) {
  if (props.disabled || !byNode.value.has(source)) return null;
  const marker = { id: crypto.randomUUID(), label: '', x: Math.min(1000000, Math.max(0, Math.round(point.x - 80))), y: Math.min(1000000, Math.max(0, Math.round(point.y - 48))), sources: [source] };
  const next = [...markers.value, marker];
- if (!savePortals(props.roadmapId, next)) { notify('Não foi possível salvar os portais neste navegador.', 'error'); return null; }
+ if (!await savePortals(props.roadmapId, next)) return null;
  markers.value = next;
  emit('connected'); emit('reveal', { ...marker, width: 160, height: 110 });
  return marker;
 }
 function edit(marker) { if (props.disabled) return; label.value = marker.label; form.value = { id: marker.id }; }
-function save() {
+async function save() {
+ if (props.disabled || !form.value) return;
  if (form.value.id) { const marker = markers.value.find(marker => marker.id === form.value.id); if (marker) marker.label = label.value.trim(); }
  else { const marker = { id: crypto.randomUUID(), label: label.value.trim(), x: form.value.x, y: form.value.y, sources: [] }; markers.value.push(marker); emit('reveal', { ...marker, width: 160, height: 140 }); }
- persist(); form.value = null;
+ if (await persist()) form.value = null;
 }
-function remove(marker) { if (props.disabled) return; markers.value = markers.value.filter(item => item.id !== marker.id); persist(); }
-function connect(id, source = props.sourceNodeId) {
+async function remove(marker) { if (props.disabled) return; markers.value = markers.value.filter(item => item.id !== marker.id); await persist(); }
+async function connect(id, source = props.sourceNodeId) {
  const marker = markers.value.find(marker => marker.id === id);
  if (props.disabled || !marker || !byNode.value.has(source)) return;
- if (!marker.sources.includes(source)) { marker.sources.push(source); persist(); }
+ if (!marker.sources.includes(source)) { marker.sources.push(source); if (!await persist()) return; }
  emit('connected');
 }
 function path(link) {
@@ -60,15 +62,15 @@ function move(event) {
  marker.x = Math.min(1000000, Math.max(0, Math.round(g.x + (event.clientX - g.startX) / props.zoom)));
  marker.y = Math.min(1000000, Math.max(0, Math.round(g.y + (event.clientY - g.startY) / props.zoom)));
 }
-function endMove() { if (gesture.value) { gesture.value = null; persist(); } }
+async function endMove() { if (gesture.value) { gesture.value = null; await persist(); } }
 function cancelMove() { const g = gesture.value, marker = markers.value.find(marker => marker.id === g?.id); if (marker) { marker.x = g.x; marker.y = g.y; } gesture.value = null; }
-function keyMove(event, marker) {
+async function keyMove(event, marker) {
  if (props.disabled || event.target !== event.currentTarget) return;
  marker = markers.value.find(item => item.id === marker.id); if (!marker) return;
  const delta = { ArrowLeft: [-20, 0], ArrowRight: [20, 0], ArrowUp: [0, -20], ArrowDown: [0, 20] }[event.key]; if (!delta) return;
- event.preventDefault(); event.stopPropagation(); marker.x = Math.min(1000000, Math.max(0, marker.x + delta[0])); marker.y = Math.min(1000000, Math.max(0, marker.y + delta[1])); persist(); emit('reveal', { ...marker, width: 160, height: 140 });
+ event.preventDefault(); event.stopPropagation(); marker.x = Math.min(1000000, Math.max(0, marker.x + delta[0])); marker.y = Math.min(1000000, Math.max(0, marker.y + delta[1])); await persist(); emit('reveal', { ...marker, width: 160, height: 140 });
 }
-function removeLink() { const link = removingLink.value, marker = markers.value.find(item => item.id === link.marker.id); if (marker) { marker.sources = marker.sources.filter(id => id !== link.node.id); persist(); } removingLink.value = null; }
+async function removeLink() { const link = removingLink.value, marker = markers.value.find(item => item.id === link.marker.id); if (marker) { marker.sources = marker.sources.filter(id => id !== link.node.id); await persist(); } removingLink.value = null; }
 function setPositions(positions) {
  const byId = new Map(positions.map(position => [position.id, position]));
  markers.value = markers.value.map(marker => { const position = byId.get(marker.id); return position ? { ...marker, x: position.x, y: position.y } : marker; });

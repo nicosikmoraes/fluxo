@@ -17,7 +17,8 @@ class RoadmapController extends Controller
 {
     public function create(Request $r, Project $project)
     {
-        $d = $r->validate(['title' => ['required', 'string', 'max:160']]);
+        $d = $r->validate(['title' => ['required', 'string', 'max:160'], 'card_type' => ['sometimes', 'required', Rule::in(['task', 'activity'])]]);
+        $d['card_type'] ??= 'activity';
 
         return response()->json(Roadmap::create($d + ['project_id' => $project->id])->load('nodes', 'edges'), 201);
     }
@@ -36,6 +37,36 @@ class RoadmapController extends Controller
         return response()->noContent();
     }
 
+    public function savePortals(Request $request, Roadmap $roadmap): JsonResponse
+    {
+        $data = $request->validate([
+            'version' => ['required', 'integer', 'min:0'],
+            'portals' => ['present', 'array', 'max:2000', 'list'],
+            'portals.*' => ['required', 'array:id,label,x,y,sources'],
+            'portals.*.id' => ['required', 'string', 'max:100', 'distinct:strict'],
+            'portals.*.label' => ['present', 'nullable', 'string', 'max:160'],
+            'portals.*.x' => ['required', 'integer', 'min:0', 'max:1000000'],
+            'portals.*.y' => ['required', 'integer', 'min:0', 'max:1000000'],
+            'portals.*.sources' => ['present', 'array', 'max:2000', 'list'],
+            'portals.*.sources.*' => ['required', 'integer', 'min:1', Rule::exists('roadmap_nodes', 'id')->where('roadmap_id', $roadmap->id)->where('user_id', $request->user()->id)],
+        ]);
+
+        return DB::transaction(function () use ($roadmap, $data): JsonResponse {
+            $current = Roadmap::whereKey($roadmap->id)->lockForUpdate()->firstOrFail();
+            abort_unless($current->portals_version === (int) $data['version'], 409, 'Os portais mudaram em outra aba. Atualize a página antes de salvar.');
+            $portals = array_map(fn (array $portal): array => [
+                'id' => $portal['id'],
+                'label' => $portal['label'] ?? '',
+                'x' => $portal['x'],
+                'y' => $portal['y'],
+                'sources' => array_values(array_unique($portal['sources'])),
+            ], $data['portals']);
+            $current->forceFill(['portals' => $portals, 'portals_version' => $current->portals_version + 1])->save();
+
+            return response()->json($current->only('portals', 'portals_version'));
+        });
+    }
+
     private function coordinates(): array
     {
         return ['x' => ['required', 'numeric', 'min:0', 'max:1000000'], 'y' => ['required', 'numeric', 'min:0', 'max:1000000']];
@@ -43,8 +74,12 @@ class RoadmapController extends Controller
 
     public function addNode(Request $r, Roadmap $roadmap)
     {
-        $taskIds = Project::findOrFail($roadmap->project_id)->tasks()->pluck('id');
-        $d = $r->validate($this->coordinates() + ['activity_id' => ['required', 'integer', Rule::exists('activities', 'id')->whereIn('task_id', $taskIds), Rule::unique('roadmap_nodes', 'activity_id')->where('roadmap_id', $roadmap->id)]]);
+        if ($roadmap->card_type === 'task') {
+            $d = $r->validate($this->coordinates() + ['task_id' => ['required', 'integer', Rule::exists('tasks', 'id')->where('project_id', $roadmap->project_id), Rule::unique('roadmap_nodes', 'task_id')->where('roadmap_id', $roadmap->id)]]);
+        } else {
+            $taskIds = Project::findOrFail($roadmap->project_id)->tasks()->pluck('id');
+            $d = $r->validate($this->coordinates() + ['activity_id' => ['required', 'integer', Rule::exists('activities', 'id')->whereIn('task_id', $taskIds), Rule::unique('roadmap_nodes', 'activity_id')->where('roadmap_id', $roadmap->id)]]);
+        }
 
         return response()->json($roadmap->nodes()->create($d), 201);
     }
@@ -69,6 +104,28 @@ class RoadmapController extends Controller
             $edge = $roadmap->edges()->create(['source_node_id' => $source->id, 'target_node_id' => $node->id]);
 
             return response()->json(['activity' => $activity->refresh()->load('comments'), 'node' => $node, 'edge' => $edge], 201);
+        });
+    }
+
+    public function createConnectedTask(Request $r, Roadmap $roadmap)
+    {
+        abort_unless($roadmap->card_type === 'task', 422, 'Este roadmap organiza atividades.');
+        $d = $r->validate($this->coordinates() + [
+            'title' => ['required', 'string', 'max:200'],
+            'source_node_id' => ['required', 'integer', Rule::exists('roadmap_nodes', 'id')->where('roadmap_id', $roadmap->id)],
+        ]);
+
+        return DB::transaction(function () use ($roadmap, $d) {
+            $project = Project::findOrFail($roadmap->project_id);
+            $task = $project->tasks()->create([
+                'title' => $d['title'],
+                'position' => (Task::max('position') ?? -1) + 1,
+            ]);
+            $source = $roadmap->nodes()->findOrFail($d['source_node_id']);
+            $node = $roadmap->nodes()->create(['task_id' => $task->id, 'x' => $d['x'], 'y' => $d['y']]);
+            $edge = $roadmap->edges()->create(['source_node_id' => $source->id, 'target_node_id' => $node->id]);
+
+            return response()->json(['task' => $task->refresh()->load('activities.comments'), 'node' => $node, 'edge' => $edge], 201);
         });
     }
 

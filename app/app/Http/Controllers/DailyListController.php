@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class DailyListController extends Controller
@@ -74,9 +75,9 @@ class DailyListController extends Controller
     {
         $data = $request->validate([
             'date' => $this->dateRules(),
-            'activity_id' => ['nullable', 'integer', 'exists:activities,id'],
+            'activity_id' => ['nullable', 'integer', Rule::exists('activities', 'id')->where('user_id', $request->user()->id)],
             'title' => ['required_without:activity_id', 'nullable', 'string', 'max:200'],
-            'project_id' => ['nullable', 'integer', 'exists:projects,id'],
+            'project_id' => ['nullable', 'integer', Rule::exists('projects', 'id')->where('user_id', $request->user()->id)],
             'priority' => ['sometimes', 'boolean'],
             'recurring' => ['sometimes', 'boolean'],
         ]);

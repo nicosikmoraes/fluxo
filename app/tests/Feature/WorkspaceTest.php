@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -26,6 +27,7 @@ class WorkspaceTest extends TestCase
 
     public function test_status_is_derived_from_activities_and_empty_tasks_start_pending(): void
     {
+        $this->actingAs(User::factory()->create());
         $t = $this->task();
         $this->assertSame('pending', $this->taskStatus());
         $a = $this->activity($t);
@@ -44,6 +46,7 @@ class WorkspaceTest extends TestCase
 
     public function test_blocks_require_person_and_reason_and_must_be_removed_before_completion(): void
     {
+        $this->actingAs(User::factory()->create());
         $a = $this->activity($this->task());
         $this->patchJson('/api/activities/'.$a, ['blocked' => true])->assertUnprocessable()->assertJsonValidationErrors(['blocking_person', 'blocking_reason']);
         $this->patchJson('/api/activities/'.$a, ['blocked' => true, 'blocking_person' => 'Mariana', 'blocking_reason' => 'Liberar API'])->assertOk()->assertJsonPath('blocked', true);
@@ -55,6 +58,7 @@ class WorkspaceTest extends TestCase
 
     public function test_multiple_comments_can_be_edited_deleted_and_cascade_with_activity(): void
     {
+        $this->actingAs(User::factory()->create());
         $a = $this->activity($this->task());
         $c = $this->postJson('/api/activities/'.$a.'/comments', ['body' => 'Primeira decisão'])->assertCreated()->json('id');
         $this->postJson('/api/activities/'.$a.'/comments', ['body' => 'Outra ideia'])->assertCreated();
@@ -67,6 +71,7 @@ class WorkspaceTest extends TestCase
 
     public function test_project_deletion_can_keep_or_permanently_delete_tasks(): void
     {
+        $this->actingAs(User::factory()->create());
         $p = $this->postJson('/api/projects', ['title' => 'Projeto', 'cover' => 'desk'])->assertCreated()->json('id');
         $t = $this->task(['project_id' => $p]);
         $this->deleteJson('/api/projects/'.$p, ['delete_tasks' => false])->assertNoContent();
@@ -83,6 +88,7 @@ class WorkspaceTest extends TestCase
 
     public function test_reordering_persists_and_rejects_activities_from_other_tasks(): void
     {
+        $this->actingAs(User::factory()->create());
         $t = $this->task();
         $other = $this->task(['title' => 'Outra']);
         $a = $this->activity($t, 'Primeiro');
@@ -98,6 +104,7 @@ class WorkspaceTest extends TestCase
 
     public function test_invalid_input_and_external_browser_origins_are_rejected(): void
     {
+        $this->actingAs(User::factory()->create());
         $this->postJson('/api/tasks', ['title' => ''])->assertUnprocessable();
         $this->postJson('/api/tasks', ['title' => 'Task', 'project_id' => 999])->assertUnprocessable();
         $this->withHeader('Origin', 'https://example.com')->postJson('/api/tasks', ['title' => 'Cross site'])->assertForbidden();
@@ -105,12 +112,13 @@ class WorkspaceTest extends TestCase
 
     public function test_task_deletion_removes_all_children(): void
     {
+        $this->actingAs(User::factory()->create());
         $t = $this->task();
         $a = $this->activity($t);
         $this->postJson('/api/activities/'.$a.'/comments', ['body' => 'Nota'])->assertCreated();
         $this->deleteJson('/api/tasks/'.$t)->assertNoContent();
-        $this->assertDatabaseCount('tasks',0);
-        $this->assertDatabaseCount('activities',0);
-        $this->assertDatabaseCount('comments',0);
+        $this->assertDatabaseCount('tasks', 0);
+        $this->assertDatabaseCount('activities', 0);
+        $this->assertDatabaseCount('comments', 0);
     }
 }
