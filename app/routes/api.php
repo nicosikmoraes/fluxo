@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\DailyListController as D;
 use App\Http\Controllers\RoadmapController as R;
 use App\Http\Controllers\WorkspaceController as W;
 use Illuminate\Support\Facades\Route;
@@ -31,4 +32,11 @@ Route::delete('/activities/{activity}', [W::class, 'deleteActivity']);
 Route::post('/activities/{activity}/comments', [W::class, 'createComment']);
 Route::patch('/comments/{comment}', [W::class, 'updateComment']);
 Route::delete('/comments/{comment}', [W::class, 'deleteComment']);
-Route::post('/images',[W::class, 'uploadImage']);
+Route::post('/images', [W::class, 'uploadImage']);
+
+Route::get('/daily-list', [D::class, 'index']);
+Route::post('/daily-list', [D::class, 'store']);
+Route::post('/daily-list/carry', [D::class, 'carry']);
+Route::patch('/daily-list/{dailyEntry}', [D::class, 'update']);
+Route::delete('/daily-list/{dailyEntry}', [D::class, 'destroy']);
+Route::patch('/daily-routines/{dailyRoutine}/stop', [D::class, 'stopRoutine']);
