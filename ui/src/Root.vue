@@ -1,14 +1,20 @@
 <script setup>
-import { onMounted, ref, watch } from 'vue';
-import { LoaderCircle, RefreshCw } from '@lucide/vue';
-import App from './App.vue';
-import AuthScreen from './components/AuthScreen.vue';
-import { auth, restoreSession } from './auth';
-import { resetWorkspace } from './workspace';
-const resetToken = ref(window.location.pathname.startsWith('/reset-password/') ? window.location.pathname.split('/').pop() : '');
-const resetEmail = new URLSearchParams(window.location.search).get('email') || '';
-watch(() => auth.user?.id, (id, previous) => { if (id !== previous) resetWorkspace(); }, { flush: 'sync' });
-async function connect() { auth.loading = true; await restoreSession().catch(() => {}); }
+import { onMounted, ref, watch } from "vue";
+import { LoaderCircle, RefreshCw } from "@lucide/vue";
+import App from "./App.vue";
+import AuthScreen from "./features/auth/AuthScreen.vue";
+import { auth, restoreSession } from "./features/auth/auth";
+import { resetWorkspace } from "./state/workspace";
+const resetToken = ref(window.location.pathname.startsWith("/reset-password/") ? window.location.pathname.split("/").pop() : "");
+const resetEmail = new URLSearchParams(window.location.search).get("email") || "";
+watch(() => auth.user?.id, (id, previous) => {
+  if (id !== previous) resetWorkspace();
+}, { flush: "sync" });
+async function connect() {
+  auth.loading = true;
+  await restoreSession().catch(() => {
+  });
+}
 onMounted(connect);
 </script>
 <template>
