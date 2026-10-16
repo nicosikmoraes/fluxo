@@ -1,6 +1,7 @@
 const fs=require('fs');const path=require('path');const {spawn}=require('child_process');
 const base=__dirname;const app=path.join(base,'app');const php=path.join(base,'.runtime/php/php.exe');
-const url='http://127.0.0.1:8787';const logPath=path.join(base,'startup.log');
+const port=Number(process.env.FLUXO_PORT||8788);
+const url='http://127.0.0.1:'+port;const logPath=path.join(base,'startup.log');
 const checkOnly=process.argv.includes('--check');const noBrowser=checkOnly||process.argv.includes('--no-browser');
 let server;let shuttingDown=false;let shutdownCode=0;let lastError='';
 fs.writeFileSync(logPath,'Fluxo — inicialização '+new Date().toISOString()+'\n');
@@ -12,11 +13,12 @@ async function probe(){
  if(!page.ok||!html.includes('/ui/assets/'))throw new Error('A interface não está disponível ('+page.status+').');
 }
 async function main(){
+ if(!Number.isInteger(port)||port<1||port>65535)throw new Error('FLUXO_PORT deve ser uma porta entre 1 e 65535.');
  if(typeof fetch!=='function')throw new Error('É necessário Node.js 18 ou mais recente. Versão encontrada: '+process.version);
  for(const file of [php,path.join(app,'vendor/autoload.php'),path.join(app,'public/ui/index.html')])if(!fs.existsSync(file))throw new Error('Arquivo necessário não encontrado: '+file);
  try{await probe();log('O Fluxo já está aberto em '+url);if(!noBrowser)openBrowser();stop();return;}catch{}
  log('\nFluxo — seu trabalho, passo a passo.\nIniciando o servidor local em '+url+'...\n');
- server=spawn(php,['-d','opcache.enable=0','-d','opcache.enable_cli=0','-S','127.0.0.1:8787','-t','.',path.join(app,'vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php')],{cwd:path.join(app,'public'),stdio:['ignore','pipe','pipe'],windowsHide:true});
+ server=spawn(php,['-d','opcache.enable=0','-d','opcache.enable_cli=0','-S','127.0.0.1:'+port,'-t','.',path.join(app,'vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php')],{cwd:path.join(app,'public'),stdio:['ignore','pipe','pipe'],windowsHide:true});
  for(const stream of [server.stdout,server.stderr])stream.on('data',chunk=>{const text=chunk.toString();process.stdout.write(text);fs.appendFileSync(logPath,text);});
  server.on('error',error=>{log('Não foi possível iniciar o PHP: '+error.message);stop(1);});
  server.on('exit',code=>{if(!shuttingDown)log('O servidor foi encerrado (código '+code+'). Verifique o erro acima.');process.exit(shuttingDown?shutdownCode:(code||1));});

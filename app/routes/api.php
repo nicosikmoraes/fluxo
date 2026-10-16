@@ -3,6 +3,8 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DailyListController as D;
 use App\Http\Controllers\RoadmapController as R;
+use App\Http\Controllers\WorkHistoryController;
+use App\Http\Controllers\WorkHoursController;
 use App\Http\Controllers\WorkspaceController as W;
 use Illuminate\Support\Facades\Route;
 
@@ -14,6 +16,11 @@ Route::post('/auth/reset-password', [AuthController::class, 'resetPassword'])->m
 
 Route::middleware(['auth', 'auth.session'])->group(function (): void {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
+    Route::get('/profile/work-hours', [WorkHoursController::class, 'index']);
+    Route::put('/profile/work-hours', [WorkHoursController::class, 'update']);
+    Route::post('/profile/work-hours/records', [WorkHoursController::class, 'record']);
+    Route::get('/profile/work-hours/history', [WorkHistoryController::class, 'index']);
+    Route::put('/profile/work-hours/receipts', [WorkHistoryController::class, 'updateReceipt']);
 
     Route::post('/projects/{project}/roadmaps', [R::class, 'create']);
     Route::patch('/roadmaps/{roadmap}', [R::class, 'update']);
