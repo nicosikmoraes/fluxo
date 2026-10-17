@@ -3,7 +3,7 @@ mod backend;
 mod windows;
 
 use backend::Backend;
-use std::{fs, path::PathBuf, sync::Mutex};
+use std::{fs, io::Write, path::PathBuf, sync::Mutex};
 use tauri::{Manager, RunEvent, WebviewUrl, WebviewWindowBuilder};
 use windows::{
     desktop_drag, desktop_hide, desktop_import, desktop_layout, desktop_nudge,
@@ -21,7 +21,7 @@ fn main() {
             std::process::exit(2);
         };
         let data = PathBuf::from(directory);
-        let resources = std::env::current_exe()
+        let resources = tauri::utils::platform::current_exe()
             .expect("Executável ausente")
             .parent()
             .expect("Pasta ausente")
@@ -29,7 +29,7 @@ fn main() {
         let result = Backend::start(&resources, data.clone());
         let (report, code) = match result {
             Ok(backend) => {
-                let report = serde_json::json!({ "ready": true, "url": backend.url });
+                let report = serde_json::json!({ "ready": true, "url": backend.url, "resources": resources });
                 backend.stop();
                 (report, 0)
             }
@@ -82,7 +82,15 @@ fn main() {
                     windows::create_tray(app.handle())?;
                 }
                 Err(message) => {
-                    let window = WebviewWindowBuilder::new(
+                    if let Ok(mut log) = fs::OpenOptions::new()
+                        .create(true)
+                        .append(true)
+                        .open(data.join("desktop.log"))
+                    {
+                        let _ = writeln!(log, "Falha na inicialização: {message}");
+                    }
+                    let text = serde_json::to_string(&message)?;
+                    WebviewWindowBuilder::new(
                         app,
                         "startup-error",
                         WebviewUrl::App("index.html".into()),
@@ -90,11 +98,8 @@ fn main() {
                     .title("Fluxo Jornada")
                     .inner_size(530.0, 240.0)
                     .center()
+                    .initialization_script(format!("window.__FLUXO_STARTUP_ERROR__={text};"))
                     .build()?;
-                    let text = serde_json::to_string(&message)?;
-                    window.eval(format!(
-                        "document.getElementById('status').textContent={text};"
-                    ))?;
                 }
             }
             Ok(())

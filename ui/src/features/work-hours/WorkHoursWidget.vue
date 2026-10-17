@@ -110,6 +110,7 @@ function collapseFromHeader(event) {
           <button v-else class="work-widget-finish finished" @click="emit('settings')"><Check :size="14" /> Ver registros de hoje</button>
           <button class="work-widget-minimize" aria-label="Recolher widget da jornada" @click="emit('update:expanded', false)">Recolher <ArrowUpRight :size="13" /></button>
         </footer>
+        <slot name="tools" />
       </section>
 
       <button v-else key="compact" class="work-widget-compact" aria-label="Abrir widget da jornada" title="Clique para abrir ou arraste para mover" @pointerdown="startWidgetDrag" @keydown="moveWidgetWithKeyboard" @click="emit('update:expanded', true)">
