@@ -105,12 +105,16 @@ onUnmounted(() => {
       <button class="btn primary" @click="nativeAction(() => openDesktopWorkspace())"><Settings2 :size="14" /> Configurar minha jornada</button>
       <button class="text-btn" @click="nativeAction(hideDesktopWidget)">Recolher perto do relógio</button>
     </div>
-    <WorkHoursWidget v-else native-window :day="day" :entries="workHours.state.data.active_day.entries" v-model:expanded="expanded" :busy="workHours.state.saving" @action="workHours.act" @finish="workHours.finish" @settings="nativeAction(() => openDesktopWorkspace())" @drag="nativeAction(dragDesktopWidget)" @hide="nativeAction(hideDesktopWidget)" @move="nativeAction(() => desktopCall('desktop_nudge', { direction: $event }))" />
-    <footer v-if="expanded" class="desktop-jornada-tools">
-      <span>Salvo neste computador</span>
-      <button :class="{ active: alwaysOnTop }" :aria-pressed="alwaysOnTop" title="Manter sobre outras janelas" aria-label="Manter sobre outras janelas" @click="toggleTop"><Pin :size="13" /></button>
-      <button title="Histórico de horas" aria-label="Abrir histórico de horas" @click="nativeAction(() => openDesktopWorkspace('work-history'))"><BarChart3 :size="14" /></button>
-    </footer>
+    <WorkHoursWidget v-else native-window :day="day" :entries="workHours.state.data.active_day.entries" v-model:expanded="expanded" :busy="workHours.state.saving" @action="workHours.act" @finish="workHours.finish" @settings="nativeAction(() => openDesktopWorkspace())" @drag="nativeAction(dragDesktopWidget)" @hide="nativeAction(hideDesktopWidget)" @move="nativeAction(() => desktopCall('desktop_nudge', { direction: $event }))">
+      <template #tools>
+        <footer class="desktop-jornada-tools">
+          <span>Salvo neste computador</span>
+          <button :class="{ active: alwaysOnTop }" :aria-pressed="alwaysOnTop" title="Manter sobre outras janelas" aria-label="Manter sobre outras janelas" @click="toggleTop"><Pin :size="13" /></button>
+          <button title="Histórico de horas" aria-label="Abrir histórico de horas" @click="nativeAction(() => openDesktopWorkspace('work-history'))"><BarChart3 :size="14" /></button>
+        </footer>
+      </template>
+    </WorkHoursWidget>
+
     <p v-if="state.toast" class="desktop-jornada-toast" :class="state.toast.kind" role="status">{{ state.toast.message }}</p>
     <p v-if="nativeError" class="desktop-jornada-toast error" role="alert">{{ nativeError }}</p>
   </div>
@@ -157,7 +161,9 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 6px 0;
+  padding: 8px 12px;
+  border-top: 1px solid #edf1f8;
+  background: #fff;
   font-size: 9px;
   color: #98a7bd;
 }

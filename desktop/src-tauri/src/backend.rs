@@ -20,6 +20,29 @@ pub struct Backend {
     child: Mutex<Child>,
 }
 
+// PHP and Win32 process arguments need regular separators instead of verbatim paths.
+fn runtime_path(path: &Path) -> PathBuf {
+    #[cfg(windows)]
+    {
+        use std::path::{Component, Prefix};
+        let mut components = path.components();
+        if let Some(Component::Prefix(prefix)) = components.next() {
+            let mut regular = match prefix.kind() {
+                Prefix::VerbatimDisk(drive) => PathBuf::from(format!("{}:\\", drive as char)),
+                Prefix::VerbatimUNC(server, share) => PathBuf::from(r"\\").join(server).join(share),
+                _ => return path.to_path_buf(),
+            };
+            for component in components {
+                if component != Component::RootDir {
+                    regular.push(component.as_os_str());
+                }
+            }
+            return regular;
+        }
+    }
+    path.to_path_buf()
+}
+
 fn free_port() -> Result<u16, String> {
     for port in 18788..18808 {
         if let Ok(listener) = TcpListener::bind(("127.0.0.1", port)) {
@@ -88,6 +111,9 @@ fn healthy(port: u16, instance: &str) -> bool {
 
 impl Backend {
     pub fn start(resources: &Path, data: PathBuf) -> Result<Self, String> {
+        let resource_directory = runtime_path(resources);
+        let resources = resource_directory.as_path();
+        let data = runtime_path(&data);
         fs::create_dir_all(&data).map_err(|e| e.to_string())?;
         let log = OpenOptions::new()
             .create(true)
@@ -215,5 +241,73 @@ impl Backend {
 impl Drop for Backend {
     fn drop(&mut self) {
         self.stop();
+    }
+}
+
+#[cfg(all(test, windows))]
+mod tests {
+    use super::runtime_path;
+    use std::path::{Path, PathBuf};
+
+    #[test]
+    fn normalizes_verbatim_disk_paths_for_php() {
+        assert_eq!(
+            runtime_path(Path::new(r"\\?\C:\Users\Pessoa\Fluxo Jornada")),
+            PathBuf::from(r"C:\Users\Pessoa\Fluxo Jornada")
+        );
+    }
+
+    #[test]
+    fn preserves_unc_shares_and_regular_paths() {
+        assert_eq!(
+            runtime_path(Path::new(r"\\?\UNC\servidor\pasta\Fluxo Jornada")),
+            PathBuf::from(r"\\servidor\pasta\Fluxo Jornada")
+        );
+        let regular = Path::new(r"C:\Users\Pessoa\Fluxo Jornada");
+        assert_eq!(runtime_path(regular), regular);
+    }
+
+    #[test]
+    fn starts_and_stops_php_with_canonical_windows_paths() {
+        use super::{healthy, Backend};
+        use std::{
+            fs,
+            time::{SystemTime, UNIX_EPOCH},
+        };
+
+        let build = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../.build")
+            .canonicalize()
+            .unwrap();
+        let resources = build.join("resources").canonicalize().unwrap();
+        let suffix = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let data = build.join(format!("test-native-rust local space-{suffix}"));
+        fs::create_dir(&data).unwrap();
+        struct TemporaryData(PathBuf, PathBuf);
+        impl Drop for TemporaryData {
+            fn drop(&mut self) {
+                if self.0.starts_with(&self.1)
+                    && self
+                        .0
+                        .file_name()
+                        .is_some_and(|name| name.to_string_lossy().starts_with("test-native-"))
+                {
+                    let _ = fs::remove_dir_all(&self.0);
+                }
+            }
+        }
+        let _cleanup = TemporaryData(data.clone(), build);
+        let backend = Backend::start(&resources, data.clone()).unwrap_or_else(|error| {
+            let log = fs::read_to_string(data.join("desktop.log")).unwrap_or_default();
+            panic!("{error}\n{log}");
+        });
+        assert!(data.join("database.sqlite").is_file());
+        assert!(data.join(".env").is_file());
+        assert!(healthy(backend.port, &backend.instance));
+        backend.stop();
+        assert!(!healthy(backend.port, &backend.instance));
     }
 }

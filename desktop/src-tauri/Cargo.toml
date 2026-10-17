@@ -1,6 +1,6 @@
 [package]
 name = "fluxo-jornada"
-version = "0.1.0"
+version = "0.1.2"
 description = "Sua jornada de trabalho no computador"
 authors = ["Fluxo"]
 edition = "2021"

@@ -2,6 +2,7 @@
 import {
   nextTick,
   onMounted,
+  onUnmounted,
   ref,
   watch
 } from "vue";
@@ -44,6 +45,7 @@ async function importLocalData() {
 }
 watch(() => Boolean(auth.user), async (signedIn) => {
   document.body.classList.toggle("desktop-account", !signedIn);
+  document.documentElement.classList.toggle("desktop-account", !signedIn);
   await nextTick();
   try {
     const preferences = signedIn ? await desktopCall("desktop_preferences") : null;
@@ -57,7 +59,14 @@ watch(() => Boolean(auth.user), async (signedIn) => {
 }, {
   immediate: true
 });
-onMounted(() => document.body.classList.add("desktop-widget-host"));
+onMounted(() => {
+  document.documentElement.classList.add("desktop-widget-host");
+  document.body.classList.add("desktop-widget-host");
+});
+onUnmounted(() => {
+  document.documentElement.classList.remove("desktop-widget-host", "desktop-account");
+  document.body.classList.remove("desktop-widget-host", "desktop-account");
+});
 </script>
 
 <template>
@@ -77,10 +86,17 @@ onMounted(() => document.body.classList.add("desktop-widget-host"));
 </template>
 
 <style>
-body.desktop-widget-host {
+html.desktop-widget-host,
+html.desktop-widget-host body,
+html.desktop-widget-host #app {
   background: transparent;
 }
 
+html.desktop-widget-host.desktop-account {
+  background: #f5f7ff;
+}
+
+html.desktop-widget-host:not(.desktop-account),
 body.desktop-widget-host:not(.desktop-account) {
   overflow: hidden;
 }

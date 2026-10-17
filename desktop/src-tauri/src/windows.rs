@@ -96,6 +96,7 @@ pub fn create_widget(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> 
         .inner_size(348.0, 210.0)
         .decorations(false)
         .transparent(true)
+        .background_color(tauri::utils::config::Color(0, 0, 0, 0))
         .resizable(false)
         .always_on_top(true)
         .skip_taskbar(true)
