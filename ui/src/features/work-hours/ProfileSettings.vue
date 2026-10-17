@@ -4,12 +4,13 @@ import { CheckCircle2, Clock3, LoaderCircle, RefreshCw, Settings2 } from "@lucid
 import { auth } from "../auth/auth";
 import { notify } from "../../state/workspace";
 import WorkHoursSettings from "./WorkHoursSettings.vue";
-import { defaultWorkSettings, emptyWorkEntries, parseWorkTime, validateWorkSettings, workSteps, workTimeInTimezone } from "./workHours";
+import { defaultWorkSettings, emptyWorkEntries, parseWorkTime, validateWorkSettings, workTimeInTimezone } from "./workHours";
 
 const props = defineProps({ workHours: { type: Object, required: true }, initialDate: { type: String, default: "" } });
 const emit = defineEmits(["open-widget", "open-history"]);
 const settings = ref({ ...defaultWorkSettings });
 const entries = ref({ ...emptyWorkEntries });
+const extraBreaks = ref([]);
 const date = ref("");
 const settingsVersion = ref(0);
 const entryVersion = ref(0);
@@ -20,7 +21,7 @@ const recording = ref(false);
 const initialized = ref(false);
 const recordTimezone = ref("");
 let previousActiveDate;
-const snapshot = () => JSON.stringify([settings.value, entries.value, date.value]);
+const snapshot = () => JSON.stringify([settings.value, entries.value, extraBreaks.value, date.value]);
 const dirty = computed(() => initialized.value && snapshot() !== baseline.value);
 const busy = computed(() => props.workHours.state.saving || selecting.value || recording.value);
 const nowMinutes = computed(() => parseWorkTime(workTimeInTimezone(props.workHours.now.value, settings.value.timezone || "UTC")));
@@ -29,6 +30,7 @@ const canRecordNow = computed(() => date.value === props.workHours.state.data?.t
 function hydrate(data) {
   settings.value = { ...data.settings, monthlySalary: data.settings.monthlySalary ?? "" };
   entries.value = { ...data.day.entries };
+  extraBreaks.value = (data.day.breaks || []).slice(1).map((pause) => ({ startedAt: pause.startTime, finishedAt: pause.endTime }));
   date.value = data.day.date;
   recordTimezone.value = data.day.timezone;
   settingsVersion.value = data.settings_version;
@@ -69,6 +71,7 @@ function payload(updatedEntries = entries.value) {
     date: date.value,
     entry_version: entryVersion.value,
     entries: updatedEntries,
+    additional_breaks: extraBreaks.value,
   };
 }
 
@@ -93,8 +96,6 @@ async function recordNow(key) {
     return;
   }
   if (entries.value[key]) return;
-  const next = workSteps.find((step) => !entries.value[step.key]);
-  if (next?.key !== key) return;
   recording.value = true;
   error.value = "";
   try {
@@ -139,7 +140,7 @@ function selectDate(value) {
     <div v-else-if="!initialized" class="profile-settings-error" role="alert"><p>{{ error || workHours.state.error }}</p><button class="text-btn" @click="reload()"><RefreshCw :size="14" /> Tentar novamente</button></div>
     <template v-else>
       <div v-if="error" class="profile-settings-error" role="alert"><p>{{ error }}</p><button class="text-btn" :disabled="busy" @click="reload()"><RefreshCw :size="14" /> Atualizar dados</button></div>
-      <WorkHoursSettings v-model:settings="settings" v-model:entries="entries" :date="date" :max-date="workHours.state.data.today" :now-minutes="nowMinutes" :saving="busy" :can-record-now="canRecordNow" editable-date allow-equal-times @update:date="selectDate" @save="save()" @record="recordNow" @open-widget="emit('open-widget')" />
+      <WorkHoursSettings v-model:settings="settings" v-model:entries="entries" v-model:extra-breaks="extraBreaks" :date="date" :max-date="workHours.state.data.today" :now-minutes="nowMinutes" :saving="busy" :can-record-now="canRecordNow" editable-date allow-equal-times @update:date="selectDate" @save="save()" @record="recordNow" @open-widget="emit('open-widget')" />
       <p class="profile-settings-footnote">Horários em {{ (recordTimezone || settings.timezone).replaceAll('_', ' ') }}.{{ dirty ? ' Você tem alterações para salvar.' : ' Suas preferências e seus horários ficam salvos na sua conta.' }}</p>
     </template>
   </div>

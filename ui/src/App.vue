@@ -183,7 +183,7 @@ onMounted(load);
   <TaskForm v-if="taskForm" :task="taskForm.task" :project-id="taskForm.projectId??selectedProject" :due-date="taskForm.dueDate" @close="taskForm=null" @saved="taskSaved" />
   <ProjectForm v-if="projectForm" :project="projectForm.project" @close="projectForm=null" @saved="projectSaved" />
   <ConfirmDialog v-if="deleting" :title="deleting.title" :message="deleting.message" :project="deleting.project" @close="deleting=null" @confirm="deleteItem" />
-  <WorkHoursWidget :position-key="'fluxo:work-widget-position:' + auth.user?.id" :day="workDay" :entries="workHours.state.data?.active_day.entries || {}" v-model:expanded="workWidgetExpanded" :busy="workHours.state.saving" @finish="workHours.finish" @settings="openProfile" />
+  <WorkHoursWidget :position-key="'fluxo:work-widget-position:' + auth.user?.id" :day="workDay" :entries="workHours.state.data?.active_day.entries || {}" v-model:expanded="workWidgetExpanded" :busy="workHours.state.saving" @finish="workHours.finish" @action="workHours.act" @settings="openProfile" />
   <Transition name="toast"><div v-if="state.toast" class="toast-message" :class="state.toast.kind" role="status"><CheckCircle2 v-if="state.toast.kind==='success'" :size="18" /><Circle v-else :size="18" /><span>{{ state.toast.message }}</span><button class="icon-btn tiny" aria-label="Fechar aviso" @click="state.toast=null"><X :size="14" /></button></div></Transition>
  </div>
 </template>

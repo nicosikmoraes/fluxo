@@ -25,7 +25,7 @@ class WorkHistoryController extends Controller
         if ($start->diffInDays($end) > 365) {
             throw ValidationException::withMessages(['end' => 'Selecione um período de até 366 dias.']);
         }
-        $settings = $request->user()->work_settings ?? WorkDay::defaultSettings($data['timezone'] ?? 'UTC');
+        $settings = array_replace(WorkDay::defaultSettings($data['timezone'] ?? 'UTC'), $request->user()->work_settings ?? []);
         $days = WorkDay::whereBetween('work_date', [$data['start'], $data['end']])
             ->where(function (Builder $query): void {
                 $query->whereNotNull('started_at')->orWhereNotNull('overtime_receipt');
@@ -39,7 +39,7 @@ class WorkHistoryController extends Controller
             'settings' => $settings,
             'today' => now($settings['timezone'])->toDateString(),
             'server_now' => now()->toIso8601String(),
-            'records' => $days->map(fn (WorkDay $day): array => $day->workHoursData()),
+            'records' => array_values(WorkDay::withOvertimeData($days, $settings, CarbonImmutable::now())),
         ])->header('Cache-Control', 'no-store, private');
     }
 
@@ -80,8 +80,11 @@ class WorkHistoryController extends Controller
             return $day;
         }, 5);
 
+        $settings = array_replace(WorkDay::defaultSettings($day->timezone), $request->user()->work_settings ?? []);
+        $records = WorkDay::withOvertimeData(collect([$day]), $settings, CarbonImmutable::now());
+
         return response()->json([
-            'record' => $day->workHoursData(),
+            'record' => $records[$day->work_date->toDateString()],
             'server_now' => now()->toIso8601String(),
         ])->header('Cache-Control', 'no-store, private');
     }

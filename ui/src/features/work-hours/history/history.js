@@ -1,4 +1,9 @@
-import { defaultWorkSettings, parseWorkTime, workDateInTimezone } from "../workHours";
+import {
+  calculateRecordedWorkDay,
+  defaultWorkSettings,
+  parseWorkTime,
+  workDateInTimezone
+} from "../workHours";
 
 export const timeMinutes = parseWorkTime;
 
@@ -17,41 +22,45 @@ export function duration(value) {
 }
 
 export function money(value) {
-  return value == null ? "—" : new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
+  return value == null ? "—" : new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL"
+  }).format(value);
 }
 
 export function dateLabel(date, options = {}) {
   if (!date) return "—";
-  return new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC", day: "2-digit", month: "short", ...options }).format(new Date(`${date}T12:00:00Z`));
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "UTC",
+    day: "2-digit",
+    month: "short",
+    ...options
+  }).format(new Date(`${date}T12:00:00Z`));
 }
 
 export function historyRecord(record, now) {
-  const regime = { ...defaultWorkSettings, ...record.regime };
-  const instant = (key) => record.instants?.[key] ? Date.parse(record.instants[key]) : null;
-  const started = instant("startedAt");
-  const lunchOut = instant("lunchOut");
-  const lunchIn = instant("lunchIn");
-  const finished = instant("finishedAt");
-  const current = now.getTime();
-  const complete = [started, lunchOut, lunchIn, finished].every((value) => value !== null && Number.isFinite(value));
-  const ongoing = !complete && started !== null && started <= current && current - started < 86400000;
-  const interval = (start, end) => start === null || end === null ? 0 : Math.max(0, end - start) / 60000;
-  const worked = interval(started, lunchOut ?? (ongoing ? current : null))
-    + interval(lunchIn, finished ?? (ongoing ? current : null));
-  const target = Number(regime.weeklyHours) * 60 / Number(regime.daysPerWeek);
-  const overtime = Math.max(0, worked - target);
-  const hasSalary = regime.monthlySalary !== "" && regime.monthlySalary != null && Number(regime.monthlySalary) > 0;
-  const overtimeRate = hasSalary ? Number(regime.monthlySalary) / Number(regime.monthlyHours) * (1 + Number(regime.overtimePremium) / 100) : null;
+  const regime = {
+    ...defaultWorkSettings,
+    ...record.regime
+  };
+  const day = calculateRecordedWorkDay({
+    ...regime,
+    enabled: true
+  }, record, now);
+  const complete = Boolean(record.instants?.startedAt && record.instants?.finishedAt);
+  const ongoing = !complete && day.started && !day.stale;
   return {
     ...record,
     ...record.entries,
     regime,
-    worked,
-    overtime,
-    target,
-    overtimeRate,
-    lunch: lunchOut !== null && lunchIn !== null ? interval(lunchOut, lunchIn) : null,
-    estimated: overtimeRate === null ? null : Math.round(overtime / 60 * overtimeRate * 100) / 100,
+    worked: day.workedSeconds / 60,
+    overtime: day.overtimeSeconds / 60,
+    target: day.targetSeconds / 60,
+    overtimeRate: day.overtimeRate,
+    overtimeBreakdown: day.overtimeBreakdown,
+    cycle: day.cycle,
+    lunch: record.entries.lunchOut ? day.lunchSeconds / 60 : null,
+    estimated: day.overtimeMoney === null ? null : Math.round(day.overtimeMoney * 100) / 100,
     received: record.receipt?.amount ?? 0,
     receivedOn: record.receipt?.received_on || "",
     receiptVersion: record.receipt?.version ?? 0,
@@ -72,6 +81,7 @@ function averageClock(values) {
 export function summarizeHistory(records) {
   const complete = records.filter((record) => record.status === "complete");
   const sum = (key, source = records) => source.reduce((total, record) => total + (record[key] ?? 0), 0);
+  const withPauses = complete.filter((record) => record.lunch !== null);
   const unvaluedDays = records.filter((record) => record.overtime > 0 && record.estimated == null).length;
   const valuedExtras = records.some((record) => record.overtime > 0 && record.estimated != null);
   return {
@@ -84,7 +94,7 @@ export function summarizeHistory(records) {
     unvaluedDays,
     received: Math.round(sum("received") * 100) / 100,
     averageWorked: complete.length ? sum("worked", complete) / complete.length : null,
-    averageLunch: complete.length ? sum("lunch", complete) / complete.length : null,
+    averageLunch: withPauses.length ? sum("lunch", withPauses) / withPauses.length : null,
     averageArrival: averageClock(complete.map((record) => record.startedAt)),
     averageDeparture: averageClock(complete.map((record) => record.finishedAt)),
     extraDays: records.filter((record) => record.overtime > 0).length,

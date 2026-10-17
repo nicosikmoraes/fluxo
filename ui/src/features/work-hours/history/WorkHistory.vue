@@ -2,7 +2,7 @@
 import { computed, onUnmounted, ref, watch } from "vue";
 import { ArrowRight, BarChart3, CalendarDays, ChevronLeft, ChevronRight, Clock3, Info, LoaderCircle, RefreshCw, Sparkles } from "@lucide/vue";
 import { notify } from "../../../state/workspace";
-import { defaultWorkSettings, workDateInTimezone } from "../workHours";
+import { defaultWorkSettings, payrollCycle, workDateInTimezone } from "../workHours";
 import HistorySummary from "./components/HistorySummary.vue";
 import HistoryChart from "./components/HistoryChart.vue";
 import HistoryAverages from "./components/HistoryAverages.vue";
@@ -13,7 +13,7 @@ import { useWorkHistory } from "./useWorkHistory";
 
 const props = defineProps({ workHours: { type: Object, required: true } });
 const emit = defineEmits(["register", "saving-change"]);
-const period = ref("month");
+const period = ref("cycle");
 const monthOffset = ref(0);
 const selectedDate = ref(null);
 const receiptError = ref("");
@@ -23,6 +23,7 @@ const customStart = ref(`${today.value.slice(0, 7)}-01`);
 const customEnd = ref(today.value);
 
 const range = computed(() => {
+  if (period.value === "cycle") return payrollCycle(today.value, profileSettings.value.cycleClosingDay || 31, monthOffset.value);
   if (period.value === "custom") return { start: customStart.value, end: customEnd.value };
   const date = new Date(`${today.value}T12:00:00Z`);
   if (period.value === "week") {
@@ -78,8 +79,8 @@ function refreshSelected() {
     <section class="history-heading"><div><span class="history-eyebrow"><span></span> SUA JORNADA, COM MAIS CLAREZA</span><h1>Seu tempo conta uma história.</h1><p>Entenda seu ritmo, acompanhe suas horas e veja o valor do seu trabalho.</p></div><div class="history-heading-art" aria-hidden="true"><Clock3 :size="46" /><span></span><i></i><b></b></div></section>
     <div class="history-section-tabs"><span><BarChart3 :size="15" /> Histórico e estatísticas</span><button :disabled="history.state.saving" @click="emit('register')">Registrar meus horários <ArrowRight :size="13" /></button></div>
     <section class="history-period" aria-label="Filtrar período">
-      <div class="history-period-heading"><span class="history-calendar-icon"><CalendarDays :size="20" /></span><div><span class="history-period-caption">PERÍODO SELECIONADO</span><strong>{{ period === 'month' ? monthTitle : period === 'week' ? 'Esta semana' : 'Período personalizado' }}</strong><small>{{ rangeLabel }}</small></div><div v-if="period === 'month'" class="history-month-arrows"><button :disabled="history.state.saving" aria-label="Mês anterior" @click="monthOffset--"><ChevronLeft :size="16" /></button><button :disabled="history.state.saving" aria-label="Próximo mês" @click="monthOffset++"><ChevronRight :size="16" /></button></div></div>
-      <div class="history-period-controls"><label for="history-period">Visualizar<select id="history-period" v-model="period" :disabled="history.state.saving"><option value="month">Por mês</option><option value="week">Esta semana</option><option value="custom">Personalizado</option></select></label><span class="history-regime"><Clock3 :size="13" />{{ settings.weeklyHours }}h / semana <span>·</span> {{ settings.daysPerWeek }} dias</span><button class="history-refresh" :disabled="history.state.loading || history.state.saving" aria-label="Atualizar histórico" @click="history.read"><RefreshCw :size="15" :class="{ spin: history.state.loading }" /></button></div>
+      <div class="history-period-heading"><span class="history-calendar-icon"><CalendarDays :size="20" /></span><div><span class="history-period-caption">PERÍODO SELECIONADO</span><strong>{{ period === 'cycle' ? 'Ciclo da empresa' : period === 'month' ? monthTitle : period === 'week' ? 'Esta semana' : 'Período personalizado' }}</strong><small>{{ rangeLabel }}</small></div><div v-if="['month', 'cycle'].includes(period)" class="history-month-arrows"><button :disabled="history.state.saving" aria-label="Período anterior" @click="monthOffset--"><ChevronLeft :size="16" /></button><button :disabled="history.state.saving" aria-label="Próximo período" @click="monthOffset++"><ChevronRight :size="16" /></button></div></div>
+      <div class="history-period-controls"><label for="history-period">Visualizar<select id="history-period" v-model="period" :disabled="history.state.saving"><option value="cycle">Ciclo da empresa</option><option value="month">Por mês</option><option value="week">Esta semana</option><option value="custom">Personalizado</option></select></label><span class="history-regime"><Clock3 :size="13" />{{ settings.weeklyHours }}h / semana <span>·</span> {{ settings.daysPerWeek }} dias</span><button class="history-refresh" :disabled="history.state.loading || history.state.saving" aria-label="Atualizar histórico" @click="history.read"><RefreshCw :size="15" :class="{ spin: history.state.loading }" /></button></div>
       <div v-if="period === 'custom'" class="history-custom-dates"><label>De<input v-model="customStart" :disabled="history.state.saving" type="date" :max="customEnd || undefined"></label><label>Até<input v-model="customEnd" :disabled="history.state.saving" type="date" :min="customStart || undefined"></label><p v-if="invalidRange" role="alert">Escolha um intervalo de até 366 dias, com a data final igual ou posterior à inicial.</p></div>
     </section>
 

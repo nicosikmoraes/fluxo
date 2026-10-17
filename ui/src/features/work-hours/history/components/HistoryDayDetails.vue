@@ -15,7 +15,7 @@ const received = ref(props.record.receivedOn ? props.record.received : props.rec
 const receivedOn = ref(props.record.receivedOn || props.today);
 const entryVersion = props.record.version;
 const receiptVersion = props.record.receiptVersion;
-const steps = [{ key: "startedAt", label: "Entrada" }, { key: "lunchOut", label: "Saída para o almoço" }, { key: "lunchIn", label: "Retorno do almoço" }, { key: "finishedAt", label: "Saída do trabalho" }];
+const steps = [{ key: "startedAt", label: "Entrada" }, { key: "lunchOut", label: "Início da pausa" }, { key: "lunchIn", label: "Retorno da pausa" }, { key: "finishedAt", label: "Saída do trabalho" }];
 onMounted(() => dialog.value.showModal());
 onBeforeUnmount(() => dialog.value?.close());
 function saveReceipt() {
@@ -36,16 +36,17 @@ function close() {
     <header><div><span>DETALHES DA JORNADA</span><h2 id="history-day-title">{{ dateLabel(record.date, { day: 'numeric', month: 'long' }) }}</h2><p>{{ dateLabel(record.date, { weekday: 'long', day: undefined, month: undefined }) }} · {{ record.status === 'complete' ? 'Jornada encerrada' : record.status === 'ongoing' ? 'Em andamento' : 'Registro incompleto' }}</p></div><button class="day-close" :disabled="busy" aria-label="Fechar detalhes do dia" @click="close"><X :size="19" /></button></header>
     <div class="day-dialog-content">
       <div class="day-totals"><div><span>Trabalhadas{{ record.status !== 'complete' ? ' · parcial' : '' }}</span><strong>{{ duration(record.worked) }}</strong></div><div><span>Horas extras</span><strong class="day-extra">{{ duration(record.overtime) }}</strong></div></div>
-      <div class="day-timeline"><div v-for="step in steps" :key="step.key"><span class="day-timeline-dot" :class="{ missing: !record[step.key] }"></span><span>{{ step.label }}</span><strong>{{ record[step.key] || 'Não registrada' }}</strong></div></div>
+      <div class="day-timeline"><div v-for="step in steps.filter((step) => !['lunchOut', 'lunchIn'].includes(step.key) || record.lunchOut)" :key="step.key"><span class="day-timeline-dot" :class="{ missing: !record[step.key] }"></span><span>{{ step.label }}</span><strong>{{ record[step.key] || 'Não registrada' }}</strong></div></div>
+      <div v-for="(pause, index) in (record.breaks || []).slice(1)" :key="index" class="day-rate">Pausa {{ index + 2 }}: {{ pause.startTime }} – {{ pause.endTime || 'em andamento' }}</div>
       <button v-if="!preview" class="day-edit-hours" :disabled="busy" @click="emit('edit', record.date)">Editar horários deste dia</button>
-      <p class="day-regime"><Clock3 :size="14" /> Meta de {{ duration(record.target) }}<template v-if="record.regime"> · semana de {{ record.regime.weeklyHours }}h em {{ record.regime.daysPerWeek }} dias</template></p>
+      <p class="day-regime"><Clock3 :size="14" /> {{ record.target === 0 ? 'Todas as horas contam como extras' : 'Meta de ' + duration(record.target) }}<template v-if="record.regime"> · semana de {{ record.regime.weeklyHours }}h em {{ record.regime.daysPerWeek }} dias</template></p>
       <p v-if="record.timezone" class="day-rate">Horários em {{ record.timezone.replaceAll('_', ' ') }}.</p>
       <section class="day-payment">
         <header><Wallet :size="17" /><h3>Recebimento das horas extras</h3></header>
         <div v-if="error" class="day-receipt-error" role="alert"><p>{{ error }}</p><button type="button" :disabled="busy" @click="emit('refresh')">Atualizar jornada</button></div>
         <template v-if="record.overtime || record.receivedOn">
           <div class="day-estimate"><span>Estimativa bruta deste dia</span><strong>{{ money(record.estimated) }}</strong></div>
-          <p v-if="record.overtimeRate != null" class="day-rate">Hora extra de {{ money(record.overtimeRate) }}, conforme o salário e o adicional registrados nesta jornada.</p>
+          <div v-if="record.overtimeRate != null"><p v-for="(part, index) in record.overtimeBreakdown" :key="index" class="day-rate">{{ duration(part.seconds / 60) }} com adicional de {{ part.premium }}% · {{ money(Number(record.regime.monthlySalary) / Number(record.regime.monthlyHours) * (1 + part.premium / 100)) }} / hora</p></div>
           <p v-else class="day-rate">Sem salário registrado neste dia. Você pode informar o valor que recebeu pelas horas extras.</p>
           <p v-if="record.receivedOn" class="day-received-info">Recebido: {{ money(record.received) }} em {{ dateLabel(record.receivedOn, { year: 'numeric' }) }}.</p>
           <form v-if="record.status === 'complete' || preview" @submit.prevent="saveReceipt">
