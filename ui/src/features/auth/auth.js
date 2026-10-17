@@ -5,7 +5,7 @@ async function fetchFromServer(url, options) {
   try {
     return await fetch(url, options);
   } catch {
-    throw new Error("Não foi possível conectar ao servidor do Fluxo. Inicie o Fluxo pelo arquivo Iniciar-Fluxo.cmd e tente novamente.");
+    throw new Error(window.__TAURI__ ? "Não foi possível acessar seus dados locais. Feche o Fluxo Jornada pelo ícone perto do relógio e abra o aplicativo novamente." : "Não foi possível conectar ao servidor do Fluxo. Inicie o Fluxo pelo arquivo Iniciar-Fluxo.cmd e tente novamente.");
   }
 }
 export async function restoreSession() {
