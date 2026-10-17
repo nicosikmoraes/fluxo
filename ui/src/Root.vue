@@ -2,6 +2,8 @@
 import { onMounted, ref, watch } from "vue";
 import { LoaderCircle, RefreshCw } from "@lucide/vue";
 import App from "./App.vue";
+import DesktopRoot from "./features/desktop/DesktopRoot.vue";
+import { isDesktopWidget } from "./features/desktop/desktopBridge";
 import AuthScreen from "./features/auth/AuthScreen.vue";
 import { auth, restoreSession } from "./features/auth/auth";
 import { resetWorkspace } from "./state/workspace";
@@ -18,7 +20,8 @@ async function connect() {
 onMounted(connect);
 </script>
 <template>
- <div v-if="auth.loading || auth.error" class="auth-loading" role="status">
+ <DesktopRoot v-if="isDesktopWidget" :connect="connect" />
+ <div v-else-if="auth.loading || auth.error" class="auth-loading" role="status">
   <LoaderCircle v-if="auth.loading" :size="28" class="spin" />
   <template v-else><p>{{ auth.error }}</p><button class="btn primary" @click="connect"><RefreshCw :size="16" /> Tentar novamente</button></template>
   <p v-if="auth.loading">Abrindo seu espaço...</p>

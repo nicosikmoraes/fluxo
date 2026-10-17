@@ -9,10 +9,11 @@ const props = defineProps({
   entries: { type: Object, required: true },
   expanded: { type: Boolean, default: true },
   busy: { type: Boolean, default: false },
+  nativeWindow: { type: Boolean, default: false },
   positionKey: { type: String, default: "" },
 });
 
-const emit = defineEmits(["update:expanded", "finish", "settings", "action"]);
+const emit = defineEmits(["update:expanded", "finish", "settings", "action", "drag", "hide", "move"]);
 const anchor = ref(null);
 const { style: positionStyle, dragging, start: startDragging, captureClick, moveWithKeyboard } = useDraggableWidget(anchor, () => props.positionKey);
 const isExtra = computed(() => props.day.overtimeSeconds > 0);
@@ -25,6 +26,23 @@ const compactLabel = computed(() => {
   return isExtra.value ? `+${duration.value} extras` : `${duration.value} para sair`;
 });
 
+function startWidgetDrag(event) {
+  if (!props.nativeWindow) return startDragging(event);
+  if (event.target.closest("[data-widget-drag-handle]")) {
+    event.preventDefault();
+    event.stopPropagation();
+    emit("drag");
+  }
+}
+
+function moveWidgetWithKeyboard(event) {
+  if (!props.nativeWindow) return moveWithKeyboard(event);
+  if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)) {
+    event.preventDefault();
+    emit("move", event.key);
+  }
+}
+
 function collapseFromHeader(event) {
   if (event.target.closest("button, a, input, select, textarea")) return;
   emit("update:expanded", false);
@@ -32,18 +50,18 @@ function collapseFromHeader(event) {
 </script>
 
 <template>
-  <div v-if="day.valid && day.showWidget" ref="anchor" class="work-widget-anchor" :class="{ 'is-extra': isExtra, 'is-dragging': dragging }" :style="positionStyle" @click.capture="captureClick">
+  <div v-if="day.valid && day.showWidget" ref="anchor" class="work-widget-anchor" :class="{ 'is-extra': isExtra, 'is-dragging': dragging, 'is-native': nativeWindow }" :style="nativeWindow ? undefined : positionStyle" @click.capture="captureClick">
     <Transition name="work-widget" mode="out-in">
       <section v-if="expanded" key="expanded" class="work-widget" aria-label="Resumo da sua jornada">
-        <header class="work-widget-header" title="Clique para recolher ou arraste para mover" @pointerdown="startDragging" @click="collapseFromHeader">
-          <button class="work-widget-drag-handle" type="button" data-widget-drag-handle aria-label="Mover widget da jornada" title="Arraste para mover. Use as setas do teclado para ajustar." @keydown="moveWithKeyboard"><GripVertical :size="14" /></button>
+        <header class="work-widget-header" title="Clique para recolher ou arraste para mover" @pointerdown="startWidgetDrag" @click="collapseFromHeader">
+          <button class="work-widget-drag-handle" type="button" data-widget-drag-handle aria-label="Mover widget da jornada" title="Arraste para mover. Use as setas do teclado para ajustar." @keydown="moveWidgetWithKeyboard"><GripVertical :size="14" /></button>
           <span class="work-widget-icon"><Clock3 :size="17" /></span>
           <div>
             <strong>Sua jornada</strong>
             <span>Um tempo para cada coisa.</span>
           </div>
           <button class="work-widget-icon-button" aria-label="Abrir configurações da jornada" @click="emit('settings')"><Settings2 :size="15" /></button>
-          <button class="work-widget-icon-button" aria-label="Recolher widget da jornada" @click="emit('update:expanded', false)"><X :size="16" /></button>
+          <button class="work-widget-icon-button" :aria-label="nativeWindow ? 'Esconder widget perto do relógio' : 'Recolher widget da jornada'" @click="nativeWindow ? emit('hide') : emit('update:expanded', false)"><X :size="16" /></button>
         </header>
 
         <div class="work-widget-body">
@@ -94,8 +112,8 @@ function collapseFromHeader(event) {
         </footer>
       </section>
 
-      <button v-else key="compact" class="work-widget-compact" aria-label="Abrir widget da jornada" title="Clique para abrir ou arraste para mover" @pointerdown="startDragging" @keydown="moveWithKeyboard" @click="emit('update:expanded', true)">
-        <GripVertical class="work-widget-compact-grip" :size="13" />
+      <button v-else key="compact" class="work-widget-compact" aria-label="Abrir widget da jornada" title="Clique para abrir ou arraste para mover" @pointerdown="startWidgetDrag" @keydown="moveWidgetWithKeyboard" @click="emit('update:expanded', true)">
+        <GripVertical data-widget-drag-handle class="work-widget-compact-grip" :size="13" />
         <span class="work-widget-compact-icon"><Clock3 :size="17" /></span>
         <span><small>SUA JORNADA</small><strong>{{ compactLabel }}</strong></span>
         <ChevronUp :size="15" />
@@ -105,6 +123,11 @@ function collapseFromHeader(event) {
 </template>
 
 <style scoped>
+.work-widget-anchor.is-native { position: static; max-width: none; }
+.is-native .work-widget { width: 100%; max-height: none; box-shadow: none; }
+.is-native .work-widget-compact { width: 100%; max-width: none; box-shadow: none; cursor: pointer; }
+.is-native .work-widget-header { cursor: pointer; }
+.is-native .work-widget-compact-grip { cursor: grab; }
 .work-widget-cycle { padding: 12px 19px 0; color: #92a0b4; font-size: 9px; line-height: 1.7; }
 .work-widget-footer { flex-wrap: wrap; }
 .work-widget-anchor {

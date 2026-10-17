@@ -1,0 +1,16 @@
+{
+  "name": "fluxo-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Widget local da jornada de trabalho do Fluxo",
+  "scripts": {
+    "build": "node scripts/build.cjs",
+    "dev": "node scripts/build.cjs --dev",
+    "test": "node --test tests/runtime.test.cjs",
+    "prepare:runtime": "node scripts/prepare.cjs",
+    "test:native": "node --test tests/native.test.cjs"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.0.0"
+  }
+}

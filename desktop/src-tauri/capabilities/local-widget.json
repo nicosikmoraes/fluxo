@@ -1,0 +1,24 @@
+{
+  "identifier": "local-widget",
+  "description": "Controles da janela do widget local.",
+  "windows": [
+    "widget",
+    "workspace"
+  ],
+  "remote": {
+    "urls": [
+      "http://127.0.0.1:*"
+    ]
+  },
+  "permissions": [
+    "allow-desktop-drag",
+    "allow-desktop-hide",
+    "allow-desktop-layout",
+    "allow-desktop-open-workspace",
+    "allow-desktop-preferences",
+    "allow-desktop-toggle-top",
+    "allow-desktop-nudge",
+    "allow-desktop-import",
+    "allow-desktop-show"
+  ]
+}

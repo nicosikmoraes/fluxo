@@ -13,11 +13,20 @@ import TaskCalendar from "./features/calendar/TaskCalendar.vue";
 import DailyList from "./features/daily/DailyList.vue";
 import { BarChart3, Settings2 } from "@lucide/vue";
 import ProfileSettings from "./features/work-hours/ProfileSettings.vue";
+import { isDesktop, desktopCall } from "./features/desktop/desktopBridge";
 import WorkHoursWidget from "./features/work-hours/WorkHoursWidget.vue";
 import { useWorkHours } from "./features/work-hours/useWorkHours";
 import WorkHistory from "./features/work-hours/history/WorkHistory.vue";
 const workHours = useWorkHours();
 const { day: workDay, expanded: workWidgetExpanded } = workHours;
+function showWorkWidget() {
+  if (isDesktop) {
+    desktopCall("desktop_show").catch(() => {});
+    return;
+  }
+  workWidgetExpanded.value = true;
+}
+
 const initialView = new URLSearchParams(window.location.search).get("view");
 const view = ref(["profile", "work-history"].includes(initialView) ? initialView : "board");
 const profileDate = ref("");
@@ -154,7 +163,7 @@ onMounted(load);
    <header class="topbar"><div class="breadcrumb"><button class="icon-btn mobile-menu" aria-label="Abrir menu" @click="sidebarOpen=!sidebarOpen"><PanelLeftOpen :size="21" /></button><span>Meu espaço</span><ChevronRight :size="14" /><strong>{{ view==='work-history'?'Histórico de horas':view==='profile'?'Configurações do perfil':view==='daily'?'Meu dia':view==='calendar'?'Calendário':view==='projects'?'Projetos':currentProject?.title|| (selectedProject==='none'?'Sem projeto':'Meu quadro') }}</strong></div><div class="save-indicator"><LoaderCircle v-if="state.saving || workHours.state.saving || historySaving" :size="13" class="spin" /><Check v-else :size="13" /><span>{{ state.saving || workHours.state.saving || historySaving?'Salvando...':'Tudo salvo localmente' }}</span></div><div class="account-controls"><button class="account-identity" :title="auth.user?.email" aria-label="Abrir configurações do perfil" @click="openProfile"><span class="account-avatar">{{ auth.user?.name?.slice(0,1).toUpperCase() }}</span><span class="truncate">{{ auth.user?.name }}</span></button><button class="account-exit" :disabled="logoutBusy || !!state.saving || workHours.state.saving || historySaving" @click="logout"><LogOut :size="15" /> {{ logoutBusy?'Saindo...':'Sair' }}</button></div></header>
    <main class="main-content">
     <section v-if="!['profile','work-history'].includes(view)" class="hero" :class="{'project-hero':currentProject,'calendar-hero':view==='calendar'}" :style="currentProject?.cover_path?{backgroundImage:'url('+currentProject.cover_path+')'}:undefined"><img v-if="!currentProject?.cover_path" :src="view==='calendar'?'/ui/calendar-garden.svg':'/ui/hero.png'" :alt="view==='calendar'?'Ilustração de um calendário entre plantas e ideias':'Ilustração de uma mesa criativa com notebook, plantas e caderno'" class="hero-image" :class="currentProject?.cover"><div class="hero-shade"></div><div class="hero-content"><span class="eyebrow"><span class="hero-dot"></span>{{ view==='daily'?'UM DIA PARA CADA PEQUENA CONQUISTA':view==='calendar'?'SEU CALENDÁRIO DE ENTREGAS':currentProject?'ESPAÇO DO PROJETO':'SEU ESPAÇO PARA FAZER ACONTECER' }}</span><h1>{{ view==='daily'?'Hoje, um passo de cada vez.':view==='calendar'?'Dê um dia às suas ideias.':currentProject?.title || (view==='projects'?'Toda ideia merece um espaço.':'Um passo de cada vez.') }}</h1><p>{{ view==='daily'?'Atividades de todos os projetos, no seu ritmo.':view==='calendar'?'Planeje suas entregas, encontre espaço e veja suas ideias avançarem.':currentProject?'Organize seus passos e acompanhe cada conquista.':view==='projects'?'Reúna suas tasks, dê forma às ideias e comece algo novo.':'Organize suas ideias. Desbloqueie seus próximos passos.' }}</p><div class="hero-date">{{ today }}</div></div></section>
-    <ProfileSettings v-if="view==='profile'" :work-hours="workHours" :initial-date="profileDate" @open-widget="workWidgetExpanded=true" @open-history="changeView('work-history')" />
+    <ProfileSettings v-if="view==='profile'" :work-hours="workHours" :initial-date="profileDate" @open-widget="showWorkWidget" @open-history="changeView('work-history')" />
     <WorkHistory v-else-if="view==='work-history'" :work-hours="workHours" @register="openProfile" @saving-change="historySaving=$event" />
     <template v-else-if="state.loading"><div class="loading-state"><LoaderCircle :size="28" class="spin" /><p>Abrindo seu espaço...</p></div></template>
     <div v-else-if="state.error" class="error-state"><p>{{ state.error }}</p><button class="btn primary" @click="load"><RefreshCw :size="16" /> Tentar novamente</button></div>
@@ -183,7 +192,7 @@ onMounted(load);
   <TaskForm v-if="taskForm" :task="taskForm.task" :project-id="taskForm.projectId??selectedProject" :due-date="taskForm.dueDate" @close="taskForm=null" @saved="taskSaved" />
   <ProjectForm v-if="projectForm" :project="projectForm.project" @close="projectForm=null" @saved="projectSaved" />
   <ConfirmDialog v-if="deleting" :title="deleting.title" :message="deleting.message" :project="deleting.project" @close="deleting=null" @confirm="deleteItem" />
-  <WorkHoursWidget :position-key="'fluxo:work-widget-position:' + auth.user?.id" :day="workDay" :entries="workHours.state.data?.active_day.entries || {}" v-model:expanded="workWidgetExpanded" :busy="workHours.state.saving" @finish="workHours.finish" @action="workHours.act" @settings="openProfile" />
+  <WorkHoursWidget v-if="!isDesktop" :position-key="'fluxo:work-widget-position:' + auth.user?.id" :day="workDay" :entries="workHours.state.data?.active_day.entries || {}" v-model:expanded="workWidgetExpanded" :busy="workHours.state.saving" @finish="workHours.finish" @action="workHours.act" @settings="openProfile" />
   <Transition name="toast"><div v-if="state.toast" class="toast-message" :class="state.toast.kind" role="status"><CheckCircle2 v-if="state.toast.kind==='success'" :size="18" /><Circle v-else :size="18" /><span>{{ state.toast.message }}</span><button class="icon-btn tiny" aria-label="Fechar aviso" @click="state.toast=null"><X :size="14" /></button></div></Transition>
  </div>
 </template>
