@@ -8,7 +8,7 @@ const grouping = ref("day");
 const hovered = ref(null);
 const dailyTarget = computed(() => {
   const targets = [...new Set(props.records.map((record) => record.target))];
-  return targets.length === 1 ? targets[0] : null;
+  return targets.length === 1 && targets[0] > 0 ? targets[0] : null;
 });
 watch(() => props.records, () => {
   if (hovered.value && grouping.value === "day") hovered.value = buckets.value.find((bucket) => bucket.date === hovered.value.date) || null;

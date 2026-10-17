@@ -9,19 +9,24 @@ const view = ref("settings");
 const mobileMenu = ref(false);
 const settings = ref({ ...defaultWorkSettings, enabled: true, monthlySalary: 4400 });
 const entries = ref({ startedAt: "08:00", lunchOut: "12:00", lunchIn: "13:00", finishedAt: "" });
+const extraBreaks = ref([]);
+const workDate = ref("2026-10-16");
 const nowMinutes = ref(16 * 60 + 24);
 const scenario = ref("working");
 const expanded = ref(false);
 const notice = ref("");
 let noticeTimer;
 onUnmounted(() => clearTimeout(noticeTimer));
-const day = computed(() => calculateWorkDay(settings.value, entries.value, nowMinutes.value));
+const day = computed(() => calculateWorkDay(settings.value, entries.value, nowMinutes.value, { date: workDate.value, additionalBreaks: extraBreaks.value, allowEqual: true }));
 const scenarios = [
   { value: "working", label: "Jornada em andamento" },
   { value: "overtime", label: "Fazendo hora extra" },
   { value: "no-salary", label: "Hora extra · sem salário" },
   { value: "finished", label: "Jornada encerrada" },
-  { value: "lunch", label: "Antes do 3º horário" },
+  { value: "lunch", label: "Em pausa" },
+  { value: "saturday", label: "Sábado · tudo extra" },
+  { value: "sunday", label: "Domingo · adicional 100%" },
+  { value: "idle", label: "Iniciar pelo widget" },
   { value: "disabled", label: "Primeiro acesso" },
 ];
 const columns = [
@@ -50,6 +55,8 @@ function showNotice(message) {
 
 function loadScenario(value) {
   scenario.value = value;
+  extraBreaks.value = [];
+  workDate.value = "2026-10-16";
   settings.value = { ...defaultWorkSettings, enabled: true, monthlySalary: 4400 };
   entries.value = { startedAt: "08:00", lunchOut: "12:00", lunchIn: "13:00", finishedAt: "" };
   nowMinutes.value = 16 * 60 + 24;
@@ -64,6 +71,11 @@ function loadScenario(value) {
     nowMinutes.value = 12 * 60 + 35;
     entries.value.lunchIn = "";
   }
+  if (["saturday", "sunday", "idle"].includes(value)) {
+    workDate.value = value === "sunday" ? "2026-10-18" : "2026-10-17";
+    entries.value = { ...emptyWorkEntries, startedAt: value === "idle" ? "" : "08:00" };
+    nowMinutes.value = 10 * 60;
+  }
   if (value === "disabled") {
     settings.value.enabled = false;
     settings.value.monthlySalary = "";
@@ -77,14 +89,22 @@ function updateClock(value) {
   if (minutes !== null) nowMinutes.value = minutes;
 }
 
-function finishWork() {
-  const finishedAt = formatWorkTime(nowMinutes.value);
-  const updated = { ...entries.value, finishedAt };
-  const { error } = getWorkTimeline(updated);
-  if (error) return showNotice(error);
-  entries.value = updated;
-  showNotice(`Saída registrada às ${finishedAt} nesta prévia.`);
+function widgetAction(action) {
+  const time = formatWorkTime(nowMinutes.value);
+  if (action === "start") entries.value.startedAt = time;
+  if (action === "pause") {
+    if (!entries.value.lunchOut) entries.value.lunchOut = time;
+    else extraBreaks.value.push({ startedAt: time, finishedAt: "" });
+  }
+  if (action === "resume" || action === "finish") {
+    if (entries.value.lunchOut && !entries.value.lunchIn) entries.value.lunchIn = time;
+    else if (extraBreaks.value.length && !extraBreaks.value.at(-1).finishedAt) extraBreaks.value.at(-1).finishedAt = time;
+  }
+  if (action === "finish") entries.value.finishedAt = time;
+  showNotice("Horário registrado apenas nesta prévia.");
 }
+
+const finishWork = () => widgetAction("finish");
 
 function openSettings() {
   navigate("settings");
@@ -145,7 +165,7 @@ expanded.value = view.value !== "settings";
         <template v-if="view === 'settings'">
           <header class="prototype-profile-heading"><span class="prototype-eyebrow">CONFIGURAÇÕES DO PERFIL</span><h1>Seu tempo, no seu ritmo.</h1><p>Um espaço para cuidar da sua jornada de trabalho.</p><div class="prototype-profile-ornament" aria-hidden="true"><Clock3 :size="46" /><span></span><i></i></div></header>
           <div class="prototype-settings-tabs"><span class="active"><Clock3 :size="14" /> Jornada de trabalho</span><button class="prototype-widget-preview-link" @click="showWidgetOnBoard">Ver widget no quadro <ArrowUpRight :size="13" /></button></div>
-          <WorkHoursSettings v-model:settings="settings" v-model:entries="entries" :now-minutes="nowMinutes" @save="showNotice('Preferências aplicadas nesta prévia. Os dados são de demonstração.')" @open-widget="showWidgetOnBoard" />
+          <WorkHoursSettings v-model:settings="settings" v-model:entries="entries" v-model:extra-breaks="extraBreaks" :date="workDate" :now-minutes="nowMinutes" @save="showNotice('Preferências aplicadas nesta prévia. Os dados são de demonstração.')" @open-widget="showWidgetOnBoard" />
         </template>
 
         <template v-else>
@@ -172,7 +192,7 @@ expanded.value = view.value !== "settings";
       </main>
     </div>
 
-    <WorkHoursWidget position-key="fluxo:work-widget-position:prototype" :day="day" :entries="entries" v-model:expanded="expanded" @finish="finishWork" @settings="openSettings" />
+    <WorkHoursWidget position-key="fluxo:work-widget-position:prototype" :day="day" :entries="entries" v-model:expanded="expanded" @finish="finishWork" @action="widgetAction" @settings="openSettings" />
     <Transition name="toast"><div v-if="notice" class="prototype-notice" role="status"><CheckCircle2 :size="17" /><span>{{ notice }}</span><button aria-label="Fechar aviso" @click="notice = ''"><X :size="15" /></button></div></Transition>
   </div>
 </template>

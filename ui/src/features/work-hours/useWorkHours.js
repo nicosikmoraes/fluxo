@@ -1,12 +1,31 @@
-import { computed, onMounted, onUnmounted, reactive, ref, watch } from "vue";
-import { apiRequest, auth } from "../auth/auth";
-import { notify } from "../../state/workspace";
-import { calculateRecordedWorkDay } from "./workHours";
+import {
+  computed,
+  onMounted,
+  onUnmounted,
+  reactive,
+  ref,
+  watch
+} from "vue";
+import {
+  apiRequest,
+  auth
+} from "../auth/auth";
+import {
+  notify
+} from "../../state/workspace";
+import {
+  calculateRecordedWorkDay
+} from "./workHours";
 
 export function useWorkHours() {
   const owner = auth.user.id;
   const storageKey = `fluxo:work-widget:${owner}`;
-  const state = reactive({ data: null, loading: true, saving: false, error: "" });
+  const state = reactive({
+    data: null,
+    loading: true,
+    saving: false,
+    error: ""
+  });
   const now = ref(new Date());
   const expanded = ref(false);
   let alive = true;
@@ -50,7 +69,9 @@ export function useWorkHours() {
     if (state.saving) return null;
     const ticket = ++sequence;
     lastRefresh = Date.now();
-    const query = new URLSearchParams({ timezone });
+    const query = new URLSearchParams({
+      timezone
+    });
     if (date) query.set("date", date);
     state.loading = !state.data;
     try {
@@ -93,11 +114,22 @@ export function useWorkHours() {
     });
   }
 
-  async function finish() {
-    if (state.saving || !day.value.showWidget || day.value.finished) return;
+  async function act(action) {
+    if (state.saving || day.value.finished || day.value.stale) return;
+    const entry = state.data?.active_day;
+    if (!entry) return;
     try {
-      const result = await record("finishedAt");
-      if (result) notify("Saída registrada. Sua jornada foi encerrada.");
+      const result = await mutate("/profile/work-hours/records", {
+        action,
+        date: entry.date,
+        entry_version: entry.version
+      });
+      if (result) notify({
+        start: "Entrada registrada.",
+        pause: "Pausa iniciada.",
+        resume: "Retorno registrado.",
+        finish: "Saída registrada. Jornada encerrada."
+      } [action]);
     } catch (error) {
       if (alive && auth.user?.id === owner) {
         notify(error.message, "error");
@@ -105,6 +137,8 @@ export function useWorkHours() {
       }
     }
   }
+
+  const finish = () => act("finish");
 
   function refreshWhenVisible() {
     if (!document.hidden && !state.saving) read().catch(() => {});
@@ -128,5 +162,15 @@ export function useWorkHours() {
     document.removeEventListener("visibilitychange", refreshWhenVisible);
   });
 
-  return { state, day, now, expanded, read, save, record, finish };
+  return {
+    state,
+    day,
+    now,
+    expanded,
+    read,
+    save,
+    record,
+    act,
+    finish
+  };
 }
