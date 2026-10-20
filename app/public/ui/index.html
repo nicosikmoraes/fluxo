@@ -1,10 +1,20 @@
 <!doctype html>
-<html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="theme-color" content="#f5f7fb"><title>Fluxo — Seu trabalho, passo a passo</title><link rel="icon" href="/ui/favicon.svg">  <script type="module" crossorigin src="/ui/assets/app-DKntlv-J.js"></script>
-  <link rel="modulepreload" crossorigin href="/ui/assets/style-y7znDqYS.js">
-  <link rel="modulepreload" crossorigin href="/ui/assets/WorkHoursWidget-Db7NdUOm.js">
-  <link rel="modulepreload" crossorigin href="/ui/assets/HistoryDayDetails-CnZUrd3z.js">
-  <link rel="stylesheet" crossorigin href="/ui/assets/style-DHEFOgtb.css">
-  <link rel="stylesheet" crossorigin href="/ui/assets/WorkHoursWidget-DQKwhIlJ.css">
-  <link rel="stylesheet" crossorigin href="/ui/assets/HistoryDayDetails-Bb0sTchP.css">
-  <link rel="stylesheet" crossorigin href="/ui/assets/app-CeOlKGqy.css">
+<html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="theme-color" content="#f5f7fb"><title>Fluxo — Seu trabalho, passo a passo</title><link rel="icon" href="/ui/favicon.svg"><script>
+(() => {
+  let theme = "light";
+  try {
+    if (localStorage.getItem("fluxo:theme") === "graphite") theme = "graphite";
+  } catch {}
+  document.documentElement.dataset.theme = theme;
+  document.documentElement.style.colorScheme = theme === "graphite" ? "dark" : "light";
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "graphite" ? "#151719" : "#f5f7fb");
+})();
+</script>  <script type="module" crossorigin src="/ui/assets/app-1lUI18y8.js"></script>
+  <link rel="modulepreload" crossorigin href="/ui/assets/style-ClI7N1jU.js">
+  <link rel="modulepreload" crossorigin href="/ui/assets/WorkHoursWidget-fqBjD6e3.js">
+  <link rel="modulepreload" crossorigin href="/ui/assets/HistoryDayDetails-D9zzxvSc.js">
+  <link rel="stylesheet" crossorigin href="/ui/assets/style-BIkdMoze.css">
+  <link rel="stylesheet" crossorigin href="/ui/assets/WorkHoursWidget-CQ3tZEoW.css">
+  <link rel="stylesheet" crossorigin href="/ui/assets/HistoryDayDetails-CXd9bVX4.css">
+  <link rel="stylesheet" crossorigin href="/ui/assets/app-ChZ89hvZ.css">
 </head><body><div id="app"></div></body></html>

@@ -200,32 +200,32 @@ async function chooseFocus() {
   border-radius: 8px;
   border: 1px solid transparent;
   font-size: 10px;
-  color: #8c9ab2;
+  color: var(--theme-text-secondary, #8c9ab2);
 }
 .daily-date strong {
   font-size: 14px;
   font-weight: 550;
-  color: #667997;
+  color: var(--theme-text, #667997);
 }
 .daily-date[aria-pressed=true] {
-  background: #edf2ff;
-  border-color: #dce5fc;
-  color: #6c86d8;
+  background: var(--theme-accent-soft, #edf2ff);
+  border-color: var(--theme-line, #dce5fc);
+  color: var(--theme-accent, #6c86d8);
 }
 .daily-date[aria-pressed=true] strong {
-  color: #5978ed;
+  color: var(--theme-accent, #5978ed);
 }
 .daily-date.today:not([aria-pressed=true]) {
-  border-color: #e5eaf4;
+  border-color: var(--theme-accent-line, #e5eaf4);
 }
 .daily-date-picker input {
-  border: 1px solid #e5eaf2;
+  border: 1px solid var(--theme-line, #e5eaf2);
   border-radius: 7px;
-  background: #fff;
+  background: var(--theme-panel, #fff);
   padding: 7px;
   font-size: 11px;
   max-width: 136px;
-  color: #8291ac;
+  color: var(--theme-text-secondary, #8291ac);
 }
 .daily-day-controls > .inline-actions {
   gap: 12px;
@@ -240,7 +240,7 @@ async function chooseFocus() {
 .daily-day-title {
   font-size: 13px;
   font-weight: 550;
-  color: #6d7e9c;
+  color: var(--theme-text, #6d7e9c);
   text-transform: capitalize;
   margin-right: auto;
 }
@@ -262,22 +262,22 @@ async function chooseFocus() {
   display: flex;
   gap: 11px;
   padding: 16px 13px;
-  background: #fff;
-  border: 1px solid #e7ecf4;
+  background: var(--theme-panel, #fff);
+  border: 1px solid var(--theme-line, #e7ecf4);
   border-radius: 10px;
-  box-shadow: 0 2px 7px #52699303;
+  box-shadow: 0 2px 7px var(--theme-shadow-soft, #52699303);
   min-width: 0;
 }
 .daily-entry.focused {
-  border-color: #cfdaf5;
-  background: #fdfdff;
+  border-color: var(--theme-accent-line, #cfdaf5);
+  background: var(--theme-accent-soft, #fdfdff);
 }
 .daily-entry.completed {
-  background: #fafcfb;
-  border-color: #e7f0eb;
+  background: var(--theme-success-soft, #fafcfb);
+  border-color: var(--theme-success-line, #e7f0eb);
 }
 .daily-entry.blocked {
-  border-color: #eadfc7;
+  border-color: var(--theme-warning-line, #eadfc7);
 }
 .daily-entry-body {
   min-width: 0;
@@ -293,19 +293,19 @@ async function chooseFocus() {
   font-weight: 500;
   line-height: 1.6;
   overflow-wrap: anywhere;
-  color: #44516a;
+  color: var(--theme-text, #44516a);
 }
 .daily-entry-title svg {
   flex-shrink: 0;
-  color: #a3b2cc;
+  color: var(--theme-text-muted, #a3b2cc);
 }
 .daily-entry-title.is-link:hover {
-  color: #5978ed;
+  color: var(--theme-accent, #5978ed);
 }
 .daily-entry.completed .daily-entry-title {
-  color: #8b9f98;
+  color: var(--theme-text-secondary, #8b9f98);
   text-decoration: line-through;
-  text-decoration-color: #cadbd3;
+  text-decoration-color: var(--theme-success, #cadbd3);
 }
 .daily-entry-meta {
   display: flex;
@@ -314,7 +314,7 @@ async function chooseFocus() {
   flex-wrap: wrap;
   margin-top: 8px;
   font-size: 10px;
-  color: #9aa7bd;
+  color: var(--theme-text-muted, #9aa7bd);
 }
 .daily-entry-meta > span:not(.project-label) {
   display: inline-flex;
@@ -325,10 +325,10 @@ async function chooseFocus() {
   max-width: 100%;
 }
 .daily-priority {
-  color: #b08949;
+  color: var(--theme-warning, #b08949);
 }
 .daily-focus-label {
-  color: #7d97d5;
+  color: var(--theme-accent, #7d97d5);
 }
 .daily-task-origin {
   font-size: 10px;
@@ -345,7 +345,7 @@ async function chooseFocus() {
   font-size: 10px;
 }
 .daily-entry-actions .text-btn.subtle {
-  color: #91a0b8;
+  color: var(--theme-accent, #91a0b8);
 }
 .daily-entry .activity-check {
   margin-top: 2px;
@@ -360,7 +360,7 @@ async function chooseFocus() {
   flex-wrap: wrap;
   font-size: 10px;
   line-height: 1.7;
-  color: #b29963;
+  color: var(--theme-warning, #b29963);
   margin-top: 9px;
 }
 .daily-block .text-btn {
@@ -368,7 +368,7 @@ async function chooseFocus() {
 }
 .daily-quick {
   margin-top: 13px;
-  background: #ffffff80;
+  background: var(--theme-panel, #ffffff80);
 }
 .daily-quick input {
   font-size: 12px;
@@ -377,23 +377,23 @@ async function chooseFocus() {
   min-width: 0;
 }
 .daily-focus-card {
-  background: #f6f8ff;
-  border: 1px solid #e8edf9;
+  background: var(--theme-accent-soft, #f6f8ff);
+  border: 1px solid var(--theme-accent-line, #e8edf9);
   border-radius: 12px;
   padding: 19px 16px;
 }
 .daily-focus-card > svg {
-  color: #98a9e1;
+  color: var(--theme-accent, #98a9e1);
   margin: 16px 0 12px;
 }
 .daily-focus-card h3 {
   font-size: 12px;
   font-weight: 600;
-  color: #7186c1;
+  color: var(--theme-accent, #7186c1);
 }
 .daily-focus-card p {
   font-size: 11px;
-  color: #8b9bb9;
+  color: var(--theme-accent, #8b9bb9);
   line-height: 1.8;
   margin-top: 10px;
   overflow-wrap: anywhere;
@@ -415,21 +415,21 @@ async function chooseFocus() {
 .daily-progress p {
   font-size: 10px;
   line-height: 1.7;
-  color: #95a2b8;
+  color: var(--theme-text-muted, #95a2b8);
   margin-top: 9px;
 }
 .daily-carry {
-  border-top: 1px solid #e9edf4;
+  border-top: 1px solid var(--theme-line, #e9edf4);
   padding-top: 19px;
 }
 .daily-carry h3 {
   font-size: 12px;
   font-weight: 550;
-  color: #7889a7;
+  color: var(--theme-text-secondary, #7889a7);
 }
 .daily-carry p {
   font-size: 11px;
-  color: #9ba7bc;
+  color: var(--theme-text-muted, #9ba7bc);
   line-height: 1.8;
   margin: 9px 0 13px;
 }
@@ -442,24 +442,24 @@ async function chooseFocus() {
   flex-direction: column;
   text-align: center;
   padding: 30px 18px;
-  background: #fff;
-  border: 1px solid #e7ecf4;
+  background: var(--theme-panel, #fff);
+  border: 1px solid var(--theme-line, #e7ecf4);
   border-radius: 12px;
 }
 .daily-empty h3 {
   font-size: 13px;
   font-weight: 500;
-  color: #8195b6;
+  color: var(--theme-text-secondary, #8195b6);
 }
 .daily-empty p {
   font-size: 11px;
   line-height: 1.8;
-  color: #a2aec3;
+  color: var(--theme-text-muted, #a2aec3);
   margin-top: 8px;
 }
 .daily-loading {
   padding: 35px;
-  color: #98abd7;
+  color: var(--theme-text-muted, #98abd7);
   font-size: 12px;
 }
 .daily-footer {
@@ -470,7 +470,7 @@ async function chooseFocus() {
 }
 .daily-modal-intro {
   font-size: 11px;
-  color: #98a6bd;
+  color: var(--theme-text-muted, #98a6bd);
   line-height: 1.8;
   margin: -7px 0 22px;
 }
@@ -486,12 +486,12 @@ async function chooseFocus() {
   height: 15px;
   margin: 0;
   box-shadow: none;
-  accent-color: #5978ed;
+  accent-color: var(--theme-accent, #5978ed);
 }
 .daily-form-help {
   font-size: 10px;
   line-height: 1.8;
-  color: #99a8bf;
+  color: var(--theme-text-muted, #99a8bf);
 }
 .daily-source-filters {
   display: flex;
@@ -500,11 +500,11 @@ async function chooseFocus() {
 }
 .daily-source-filters input,
 .daily-source-filters select {
-  border: 1px solid #e1e7f0;
+  border: 1px solid var(--theme-line, #e1e7f0);
   border-radius: 8px;
   padding: 10px;
   font-size: 11px;
-  background: #fcfdff;
+  background: var(--theme-panel, #fcfdff);
   min-width: 0;
 }
 .daily-source-filters input {
@@ -526,8 +526,8 @@ async function chooseFocus() {
   gap: 10px;
   width: 100%;
   text-align: left;
-  background: #fcfdff;
-  border: 1px solid #e7ecf4;
+  background: var(--theme-panel, #fcfdff);
+  border: 1px solid var(--theme-line, #e7ecf4);
   border-radius: 9px;
   padding: 13px;
 }
@@ -545,19 +545,19 @@ async function chooseFocus() {
 .daily-source-item small {
   display: block;
   font-size: 10px;
-  color: #9aa7bd;
+  color: var(--theme-text-muted, #9aa7bd);
   line-height: 1.7;
   margin-top: 4px;
   overflow-wrap: anywhere;
 }
 .daily-source-item > svg {
-  color: #8da6e7;
+  color: var(--theme-accent, #8da6e7);
   flex-shrink: 0;
 }
 .daily-source-empty {
   font-size: 12px;
   line-height: 1.8;
-  color: #9aa7bd;
+  color: var(--theme-text-muted, #9aa7bd);
   padding: 18px 5px;
 }
 @media (max-width: 1150px) {
@@ -696,7 +696,7 @@ async function chooseFocus() {
     padding: 19px 0;
   }
   .daily-carry {
-    border-top: 1px solid #e9edf4;
+    border-top: 1px solid var(--theme-line, #e9edf4);
     padding-top: 17px;
   }
   .daily-carry .text-btn {

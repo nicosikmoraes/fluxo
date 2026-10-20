@@ -21,8 +21,8 @@ defineProps({ summary: { type: Object, required: true } });
 }
 .summary-card {
   position: relative;
-  background: #fff;
-  border: 1px solid #e6ecf6;
+  background: var(--theme-panel, #fff);
+  border: 1px solid var(--theme-line, #e6ecf6);
   border-radius: 13px;
   padding: 23px 20px 20px;
   min-width: 0;
@@ -31,9 +31,9 @@ defineProps({ summary: { type: Object, required: true } });
   background:
     linear-gradient(
       130deg,
-      #f5faf7,
-      #fff);
-  border-color: #deece4;
+      var(--theme-success-soft, #f5faf7),
+      var(--theme-panel, #fff));
+  border-color: var(--theme-success-line, #deece4);
 }
 .summary-icon {
   display: grid;
@@ -44,37 +44,37 @@ defineProps({ summary: { type: Object, required: true } });
   margin-bottom: 19px;
 }
 .blue {
-  background: #edf2ff;
-  color: #8099dc;
+  background: var(--theme-accent-soft, #edf2ff);
+  color: var(--theme-accent, #8099dc);
 }
 .violet {
-  background: #f2eefb;
-  color: #ad98cd;
+  background: var(--theme-accent-soft, #f2eefb);
+  color: var(--theme-text-muted, #ad98cd);
 }
 .mint {
-  background: #edf6f1;
-  color: #86ad98;
+  background: var(--theme-success-soft, #edf6f1);
+  color: var(--theme-success, #86ad98);
 }
 .summary-card p {
   font-size: 11px;
-  color: #8a9bb6;
+  color: var(--theme-text-secondary, #8a9bb6);
 }
 .summary-card strong {
   display: block;
   font-size: clamp(20px, 2vw, 29px);
   letter-spacing: -.8px;
   font-weight: 550;
-  color: #657ea8;
+  color: var(--theme-text, #657ea8);
   margin: 10px 0;
   white-space: nowrap;
 }
 .received strong {
-  color: #7a9d89;
+  color: var(--theme-success, #7a9d89);
 }
 .summary-card small {
   font-size: 9px;
   line-height: 1.8;
-  color: #9fadc3;
+  color: var(--theme-text-muted, #9fadc3);
 }
 .summary-card small span {
   white-space: nowrap;

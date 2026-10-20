@@ -67,22 +67,22 @@ function close() {
 
 <style scoped>
 .day-dialog {
-  border: 1px solid #e2e9f5;
+  border: 1px solid var(--theme-line, #e2e9f5);
   border-radius: 17px;
   padding: 0;
   width: min(490px, calc(100vw - 32px));
   max-height: 90dvh;
   overflow-y: auto;
-  color: #8195b5;
-  box-shadow: 0 25px 100px #3b527c26;
+  color: var(--theme-text-secondary, #8195b5);
+  box-shadow: 0 25px 100px var(--theme-shadow, #3b527c26);
 }
 .day-dialog::backdrop {
-  background: #354b773b;
+  background: var(--theme-overlay, #354b773b);
   backdrop-filter: blur(3px);
 }
 .day-dialog > header {
   padding: 25px;
-  border-bottom: 1px solid #ecf0f7;
+  border-bottom: 1px solid var(--theme-line, #ecf0f7);
   display: flex;
   justify-content: space-between;
   align-items: start;
@@ -91,17 +91,17 @@ function close() {
 header > div > span {
   font-size: 8px;
   letter-spacing: 1.3px;
-  color: #a5b3c9;
+  color: var(--theme-text-muted, #a5b3c9);
 }
 h2 {
-  color: #7189b1;
+  color: var(--theme-text-secondary, #7189b1);
   font-size: 24px;
   letter-spacing: -.5px;
   font-weight: 500;
   margin-top: 9px;
 }
 header p {
-  color: #a0aec4;
+  color: var(--theme-text-muted, #a0aec4);
   font-size: 10px;
   margin-top: 9px;
 }
@@ -111,10 +111,10 @@ header p {
   width: 29px;
   height: 29px;
   border-radius: 8px;
-  color: #a3b3cd;
+  color: var(--theme-text-muted, #a3b3cd);
 }
 .day-close:hover {
-  background: #f3f6fc;
+  background: var(--theme-surface-muted, #f3f6fc);
 }
 .day-dialog-content {
   padding: 25px;
@@ -123,24 +123,24 @@ header p {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
-  border: 1px solid #e8edf8;
-  background: #f8faff;
+  border: 1px solid var(--theme-line, #e8edf8);
+  background: var(--theme-panel, #f8faff);
   padding: 17px;
   border-radius: 11px;
 }
 .day-totals span {
   font-size: 9px;
-  color: #97a8c4;
+  color: var(--theme-text-muted, #97a8c4);
 }
 .day-totals strong {
   display: block;
-  color: #7b93ba;
+  color: var(--theme-text-secondary, #7b93ba);
   font-size: 23px;
   font-weight: 500;
   margin-top: 8px;
 }
 .day-totals .day-extra {
-  color: #ac94cb;
+  color: var(--theme-text-muted, #ac94cb);
 }
 .day-timeline {
   margin: 24px 0 14px;
@@ -162,42 +162,42 @@ header p {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #afc3ed;
+  background: var(--theme-accent, #afc3ed);
 }
 .day-timeline-dot.missing {
-  background: #e2e8f2;
+  background: var(--theme-surface, #e2e8f2);
 }
 .day-regime {
   display: flex;
   align-items: center;
   gap: 7px;
-  border-top: 1px solid #f0f3f8;
+  border-top: 1px solid var(--theme-line, #f0f3f8);
   padding-top: 16px;
-  color: #a3b2c9;
+  color: var(--theme-text-muted, #a3b2c9);
   font-size: 9px;
 }
 .day-edit-hours {
   display: block;
   font-size: 10px;
-  color: #8aa4d2;
+  color: var(--theme-text-muted, #8aa4d2);
   margin: 0 0 18px auto;
   padding: 5px 0;
 }
 .day-payment {
   margin-top: 27px;
   padding-top: 24px;
-  border-top: 1px solid #edf1f7;
+  border-top: 1px solid var(--theme-line, #edf1f7);
 }
 .day-payment > header {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #90ac9d;
+  color: var(--theme-success, #90ac9d);
 }
 h3 {
   font-size: 12px;
   font-weight: 550;
-  color: #8ca598;
+  color: var(--theme-text-secondary, #8ca598);
 }
 .day-estimate {
   display: flex;
@@ -207,11 +207,11 @@ h3 {
 }
 .day-estimate strong {
   font-size: 14px;
-  color: #86a393;
+  color: var(--theme-success, #86a393);
   font-weight: 500;
 }
 .day-rate {
-  color: #a7b4c8;
+  color: var(--theme-text-muted, #a7b4c8);
   font-size: 9px;
   line-height: 1.9;
   margin-top: 8px;
@@ -227,27 +227,27 @@ label {
   flex-direction: column;
   gap: 8px;
   font-size: 10px;
-  color: #93a4bf;
+  color: var(--theme-text-muted, #93a4bf);
   min-width: 0;
 }
 input {
   width: 100%;
   min-width: 0;
   height: 39px;
-  border: 1px solid #e4eaf5;
+  border: 1px solid var(--theme-line, #e4eaf5);
   border-radius: 7px;
-  background: #fcfdff;
-  color: #8298ba;
+  background: var(--theme-panel, #fcfdff);
+  color: var(--theme-text-secondary, #8298ba);
   padding: 0 9px;
   font-size: 12px;
 }
 .day-currency {
   display: flex;
   align-items: center;
-  border: 1px solid #e4eaf5;
+  border: 1px solid var(--theme-line, #e4eaf5);
   border-radius: 7px;
   padding-left: 10px;
-  background: #fcfdff;
+  background: var(--theme-panel, #fcfdff);
 }
 .day-currency input {
   border: 0;
@@ -265,7 +265,7 @@ input {
   display: block;
   margin: 13px auto 0;
   font-size: 9px;
-  color: #ad96ae;
+  color: var(--theme-text-secondary, #ad96ae);
 }
 .day-demo-note {
   display: flex;
@@ -273,8 +273,8 @@ input {
   gap: 7px;
   font-size: 9px;
   line-height: 1.9;
-  color: #a3b2c9;
-  background: #f7f9fe;
+  color: var(--theme-text-muted, #a3b2c9);
+  background: var(--theme-panel, #f7f9fe);
   padding: 13px;
   margin-top: 23px;
   border-radius: 8px;
@@ -285,7 +285,7 @@ input {
 }
 .day-no-extra {
   font-size: 11px;
-  color: #a5b3c9;
+  color: var(--theme-text-muted, #a5b3c9);
   margin-top: 15px;
 }
 .day-receipt-form {
@@ -295,9 +295,9 @@ input {
   min-width: 0;
 }
 .day-receipt-error {
-  background: #fff5f6;
-  color: #b37d8d;
-  border: 1px solid #f1e0e5;
+  background: var(--theme-danger-soft, #fff5f6);
+  color: var(--theme-text-secondary, #b37d8d);
+  border: 1px solid var(--theme-line, #f1e0e5);
   border-radius: 8px;
   padding: 12px;
   font-size: 10px;
@@ -305,12 +305,12 @@ input {
   margin-top: 15px;
 }
 .day-receipt-error button {
-  color: #8da5d0;
+  color: var(--theme-text-muted, #8da5d0);
   font-size: 9px;
   padding: 7px 0 0;
 }
 .day-received-info {
-  color: #8aa797;
+  color: var(--theme-success, #8aa797);
   font-size: 10px;
   line-height: 1.8;
   margin-top: 12px;

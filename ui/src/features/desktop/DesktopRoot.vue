@@ -93,7 +93,7 @@ html.desktop-widget-host #app {
 }
 
 html.desktop-widget-host.desktop-account {
-  background: #f5f7ff;
+  background: var(--theme-surface-muted, #f5f7ff);
 }
 
 html.desktop-widget-host:not(.desktop-account),
@@ -108,10 +108,10 @@ body.desktop-widget-host:not(.desktop-account) #app {
 .desktop-loading {
   margin: 8px;
   padding: 24px;
-  background: #fff;
-  border: 1px solid #e1e7f2;
+  background: var(--theme-panel, #fff);
+  border: 1px solid var(--theme-line, #e1e7f2);
   border-radius: 16px;
-  color: #879ac0;
+  color: var(--theme-text-muted, #879ac0);
   display: grid;
   justify-items: center;
   gap: 14px;
@@ -121,7 +121,7 @@ body.desktop-widget-host:not(.desktop-account) #app {
 .desktop-loading h1 {
   font-size: 18px;
   font-weight: 550;
-  color: #718bb9;
+  color: var(--theme-text-secondary, #718bb9);
 }
 
 .desktop-loading p {
@@ -130,13 +130,13 @@ body.desktop-widget-host:not(.desktop-account) #app {
 }
 
 .desktop-account-screen {
-  background: #f5f7ff;
+  background: var(--theme-surface-muted, #f5f7ff);
 }
 
 .desktop-local-note {
   padding: 10px 20px;
-  background: #edf2ff;
-  color: #7c90b6;
+  background: var(--theme-accent-soft, #edf2ff);
+  color: var(--theme-text-secondary, #7c90b6);
   text-align: center;
   font-size: 11px;
 }
@@ -144,10 +144,10 @@ body.desktop-widget-host:not(.desktop-account) #app {
 .desktop-local-note button {
   margin-left: 14px;
   padding: 6px 9px;
-  border: 1px solid #dce5f8;
+  border: 1px solid var(--theme-line, #dce5f8);
   border-radius: 6px;
-  color: #6d88c1;
-  background: #fff;
+  color: var(--theme-text-secondary, #6d88c1);
+  background: var(--theme-panel, #fff);
   font-size: 10px;
 }
 
@@ -163,8 +163,8 @@ body.desktop-widget-host:not(.desktop-account) #app {
   padding: 12px;
   font-size: 11px;
   line-height: 1.6;
-  color: #ad6575;
-  background: #fff5f5;
+  color: var(--theme-danger, #ad6575);
+  background: var(--theme-danger-soft, #fff5f5);
   border-radius: 8px;
 }
 </style>

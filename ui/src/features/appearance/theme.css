@@ -1,0 +1,81 @@
+:root { color-scheme: light; }
+
+:root[data-theme="graphite"] {
+  color-scheme: dark;
+  --theme-page: #151719;
+  --theme-panel: #1e2023;
+  --theme-surface: #25272c;
+  --theme-surface-muted: #1b1d20;
+  --theme-surface-hover: #2d2e35;
+  --theme-line: #36393f;
+  --theme-line-strong: #56515f;
+  --theme-text: #eeedf1;
+  --theme-text-secondary: #d0c9d8;
+  --theme-text-muted: #b2aabb;
+  --theme-accent: #c1afd9;
+  --theme-accent-hover: #d1bce7;
+  --theme-accent-soft: #332b3e;
+  --theme-accent-line: #685677;
+  --theme-on-accent: #211a2a;
+  --theme-success: #a6ceb7;
+  --theme-success-soft: #26382e;
+  --theme-success-line: #4e6a59;
+  --theme-warning: #e1be87;
+  --theme-warning-soft: #30291f;
+  --theme-warning-line: #6c593d;
+  --theme-danger: #eda5aa;
+  --theme-danger-soft: #3d292e;
+  --theme-danger-line: #775057;
+  --theme-chart-regular: #a8bce0;
+  --theme-chart-extra: #c1a4db;
+  --theme-shadow-soft: #00000029;
+  --theme-shadow: #0000004d;
+  --theme-overlay: #00000099;
+  --theme-dot: #3a3741;
+  background: var(--theme-page);
+  color: var(--theme-text);
+  scrollbar-color: var(--theme-line-strong) var(--theme-page);
+}
+
+:root[data-theme="graphite"] body { background: var(--theme-page); }
+:root[data-theme="graphite"] .sidebar,
+:root[data-theme="graphite"] .maps-palette { background: var(--theme-surface-muted); }
+:root[data-theme="graphite"] .topbar { background: var(--theme-panel); }
+:root[data-theme="graphite"] .kanban-column { background: var(--theme-surface-muted); }
+:root[data-theme="graphite"] .maps-viewport,
+:root[data-theme="graphite"] .sketch-viewport { background-color: #17191c; }
+:root[data-theme="graphite"] .hero-shade { background: linear-gradient(90deg, #211e28f5, #211e28d9 45%, #15171955); }
+:root[data-theme="graphite"] .hero-image { filter: brightness(.65) saturate(.7); }
+:root[data-theme="graphite"] .hero-content h1 { color: var(--theme-text); }
+:root[data-theme="graphite"] .hero-content :is(p, .eyebrow, .hero-date) { color: #d1c7db; }
+:root[data-theme="graphite"] .brand-mark span { background: var(--theme-on-accent); }
+:root[data-theme="graphite"] .cover-art > svg { color: #fff; }
+:root[data-theme="graphite"] .sketch-swatches > button { color: var(--theme-on-accent); }
+:root[data-theme="graphite"] .sketch-inspector-section:nth-child(3) .sketch-swatches > button { color: var(--theme-text); }
+:root[data-theme="graphite"] :is(button, a, [tabindex]):focus-visible { outline-color: var(--theme-accent); }
+:root[data-theme="graphite"] .map-node { background: var(--theme-surface); }
+:root[data-theme="graphite"] .map-node.completed { background: #242c28; }
+:root[data-theme="graphite"] .map-node.blocked { background: var(--theme-warning-soft); }
+:root[data-theme="graphite"] .map-node.in-progress { border-color: #a18ab7; }
+:root[data-theme="graphite"] .map-node.in-progress,
+:root[data-theme="graphite"] .map-portal.in-progress {
+  --theme-warning: var(--theme-accent);
+  --theme-warning-soft: #302838;
+  --theme-warning-line: var(--theme-accent-line);
+}
+:root[data-theme="graphite"] .map-edge { stroke: #ae96c7; }
+:root[data-theme="graphite"] .maps-connections marker path { stroke: var(--theme-accent); }
+:root[data-theme="graphite"] .maps-viewport { background-image: radial-gradient(var(--theme-dot) 1px, transparent 1px); }
+:root[data-theme="graphite"] .sketch-scene pattern circle { fill: var(--theme-dot); }
+:root[data-theme="graphite"] .sketch-selection { stroke: var(--theme-accent); }
+:root[data-theme="graphite"] .chart-bar,
+:root[data-theme="graphite"] .chart-legend i { background: var(--theme-chart-regular); }
+:root[data-theme="graphite"] .chart-extra-bar,
+:root[data-theme="graphite"] .chart-legend i.extra { background: var(--theme-chart-extra); }
+:root[data-theme="graphite"] .chart-bar:hover { background: #c2cee5; }
+:root[data-theme="graphite"] .calendar-day.today time { color: var(--theme-on-accent); }
+:root[data-theme="graphite"] .sketch-text-editor { caret-color: var(--theme-accent); }
+
+@media (prefers-reduced-motion: reduce) {
+  .appearance-toggle, .appearance-option { transition: none; }
+}

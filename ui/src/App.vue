@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, defineAsyncComponent, onMounted, ref, watch } from "vue";
 import { Layers3, LayoutDashboard, FolderOpen, Plus, Search, ChevronRight, ArrowUpRight, Check, CheckCircle2, Circle, Clock3, LockKeyhole, MessageSquare, ListTodo, GripVertical, Pencil, Trash2, MoreHorizontal, Sparkles, X, PanelLeftClose, PanelLeftOpen, RefreshCw, Image, ArrowRight, Monitor, LoaderCircle, CalendarDays, LogOut } from "@lucide/vue";
 import { state, load, mutate, label, notify } from "./state/workspace";
 import { auth, signOut } from "./features/auth/auth";
@@ -11,6 +11,11 @@ import ConfirmDialog from "./shared/ConfirmDialog.vue";
 import ProjectRoadmap from "./features/roadmap/ProjectMap.vue";
 import TaskCalendar from "./features/calendar/TaskCalendar.vue";
 import DailyList from "./features/daily/DailyList.vue";
+import ThemeToggle from "./features/appearance/ThemeToggle.vue";
+import { useWhiteboard } from "./features/whiteboard/useWhiteboard";
+const FluxoWhiteboard = defineAsyncComponent(() => import("./features/whiteboard/FluxoWhiteboard.vue"));
+const whiteboard = useWhiteboard();
+const whiteboardBusy = computed(() => whiteboard.state.saving || whiteboard.state.dirty);
 import { BarChart3, Settings2 } from "@lucide/vue";
 import ProfileSettings from "./features/work-hours/ProfileSettings.vue";
 import { isDesktop, desktopCall } from "./features/desktop/desktopBridge";
@@ -28,12 +33,12 @@ function showWorkWidget() {
 }
 
 const initialView = new URLSearchParams(window.location.search).get("view");
-const view = ref(["profile", "work-history"].includes(initialView) ? initialView : "board");
+const view = ref(["profile", "work-history", "whiteboard"].includes(initialView) ? initialView : "board");
 const profileDate = ref("");
 const historySaving = ref(false);
 watch(view, (value) => {
   const url = new URL(window.location.href);
-  if (["profile", "work-history"].includes(value)) url.searchParams.set("view", value);
+  if (["profile", "work-history", "whiteboard"].includes(value)) url.searchParams.set("view", value);
   else url.searchParams.delete("view");
   window.history.replaceState({}, "", url);
 });
@@ -74,7 +79,7 @@ function chooseProject(id) {
 function changeView(v) {
   projectView.value = "board";
   view.value = v;
-  if (v === "calendar" || v === "daily") selectedProject.value = "all";
+  if (v === "calendar" || v === "daily" || v === "whiteboard") selectedProject.value = "all";
   search.value = "";
   sidebarOpen.value = false;
 }
@@ -129,7 +134,7 @@ const projectProgress = (p) => {
 };
 const logoutBusy = ref(false);
 async function logout() {
-  if (logoutBusy.value || state.saving || workHours.state.saving || historySaving.value) return;
+  if (logoutBusy.value || state.saving || workHours.state.saving || historySaving.value || whiteboardBusy.value) return;
   logoutBusy.value = true;
   try {
     await signOut();
@@ -154,17 +159,18 @@ onMounted(load);
    <a class="brand" href="#" @click.prevent="chooseProject('all')"><span class="brand-mark"><span></span><span></span><span></span></span><span>fluxo<span class="brand-period">.</span></span></a>
    <div class="workspace-name"><div class="workspace-icon"><Monitor :size="17" /></div><div><strong>Meu espaço</strong><span>Feito para o seu ritmo</span></div><span class="local-dot" title="Espaço local"></span></div>
    <p class="nav-label">SEU TRABALHO</p>
-   <nav><button class="nav-item" :class="{active:view==='board'&&selectedProject==='all'}" @click="chooseProject('all')"><LayoutDashboard :size="19" /> Meu quadro <span class="nav-count">{{ state.tasks.length }}</span></button><button class="nav-item" :class="{active:view==='projects'}" @click="changeView('projects')"><FolderOpen :size="19" /> Projetos <span class="nav-count">{{ state.projects.length }}</span></button><button class="nav-item" :class="{active:view==='calendar'}" @click="changeView('calendar')"><CalendarDays :size="19" /> Calendário</button><button class="nav-item" :class="{active:view==='daily'}" @click="changeView('daily')"><ListTodo :size="19" /> Meu dia</button><button class="nav-item" :class="{active:view==='work-history'}" @click="changeView('work-history')"><BarChart3 :size="19" /> Histórico de horas</button></nav>
+   <nav><button class="nav-item" :class="{active:view==='board'&&selectedProject==='all'}" @click="chooseProject('all')"><LayoutDashboard :size="19" /> Meu quadro <span class="nav-count">{{ state.tasks.length }}</span></button><button class="nav-item" :class="{active:view==='projects'}" @click="changeView('projects')"><FolderOpen :size="19" /> Projetos <span class="nav-count">{{ state.projects.length }}</span></button><button class="nav-item" :class="{active:view==='calendar'}" @click="changeView('calendar')"><CalendarDays :size="19" /> Calendário</button><button class="nav-item" :class="{active:view==='daily'}" @click="changeView('daily')"><ListTodo :size="19" /> Meu dia</button><button class="nav-item" :class="{active:view==='work-history'}" @click="changeView('work-history')"><BarChart3 :size="19" /> Histórico de horas</button><button class="nav-item" :class="{active:view==='whiteboard'}" @click="changeView('whiteboard')"><Pencil :size="19" /> Quadro de ideias</button></nav>
    <div class="nav-section-title"><p class="nav-label">MEUS PROJETOS</p><button class="icon-btn tiny" aria-label="Criar projeto" @click="projectForm={project:null}"><Plus :size="16" /></button></div>
    <div class="sidebar-projects"><button v-for="p in state.projects" :key="p.id" class="nav-item project-link" :class="{active:view==='board'&&Number(selectedProject)===p.id}" @click="chooseProject(p.id)"><span class="project-dot" :class="p.cover"></span><span class="truncate">{{ p.title }}</span><span class="nav-count">{{ projectTasks(p).length }}</span></button><p v-if="!state.projects.length" class="sidebar-empty">Suas ideias merecem<br>um lugar só delas.</p><button class="nav-item project-link" :class="{active:view==='board'&&selectedProject==='none'}" @click="chooseProject('none')"><span class="project-dot neutral"></span> Sem projeto</button></div>
-   <div class="sidebar-bottom"><button class="nav-item profile-nav-button" :class="{active:view==='profile'}" @click="openProfile"><Settings2 :size="17" /> Configurações do perfil</button><div class="local-footer"><span class="local-dot"></span> No seu computador <span class="local-version">v1.0</span></div></div>
+   <div class="sidebar-bottom"><ThemeToggle /><button class="nav-item profile-nav-button" :class="{active:view==='profile'}" @click="openProfile"><Settings2 :size="17" /> Configurações do perfil</button><div class="local-footer"><span class="local-dot"></span> No seu computador <span class="local-version">v1.0</span></div></div>
   </aside>
   <div class="main-shell">
-   <header class="topbar"><div class="breadcrumb"><button class="icon-btn mobile-menu" aria-label="Abrir menu" @click="sidebarOpen=!sidebarOpen"><PanelLeftOpen :size="21" /></button><span>Meu espaço</span><ChevronRight :size="14" /><strong>{{ view==='work-history'?'Histórico de horas':view==='profile'?'Configurações do perfil':view==='daily'?'Meu dia':view==='calendar'?'Calendário':view==='projects'?'Projetos':currentProject?.title|| (selectedProject==='none'?'Sem projeto':'Meu quadro') }}</strong></div><div class="save-indicator"><LoaderCircle v-if="state.saving || workHours.state.saving || historySaving" :size="13" class="spin" /><Check v-else :size="13" /><span>{{ state.saving || workHours.state.saving || historySaving?'Salvando...':'Tudo salvo localmente' }}</span></div><div class="account-controls"><button class="account-identity" :title="auth.user?.email" aria-label="Abrir configurações do perfil" @click="openProfile"><span class="account-avatar">{{ auth.user?.name?.slice(0,1).toUpperCase() }}</span><span class="truncate">{{ auth.user?.name }}</span></button><button class="account-exit" :disabled="logoutBusy || !!state.saving || workHours.state.saving || historySaving" @click="logout"><LogOut :size="15" /> {{ logoutBusy?'Saindo...':'Sair' }}</button></div></header>
-   <main class="main-content">
-    <section v-if="!['profile','work-history'].includes(view)" class="hero" :class="{'project-hero':currentProject,'calendar-hero':view==='calendar'}" :style="currentProject?.cover_path?{backgroundImage:'url('+currentProject.cover_path+')'}:undefined"><img v-if="!currentProject?.cover_path" :src="view==='calendar'?'/ui/calendar-garden.svg':'/ui/hero.png'" :alt="view==='calendar'?'Ilustração de um calendário entre plantas e ideias':'Ilustração de uma mesa criativa com notebook, plantas e caderno'" class="hero-image" :class="currentProject?.cover"><div class="hero-shade"></div><div class="hero-content"><span class="eyebrow"><span class="hero-dot"></span>{{ view==='daily'?'UM DIA PARA CADA PEQUENA CONQUISTA':view==='calendar'?'SEU CALENDÁRIO DE ENTREGAS':currentProject?'ESPAÇO DO PROJETO':'SEU ESPAÇO PARA FAZER ACONTECER' }}</span><h1>{{ view==='daily'?'Hoje, um passo de cada vez.':view==='calendar'?'Dê um dia às suas ideias.':currentProject?.title || (view==='projects'?'Toda ideia merece um espaço.':'Um passo de cada vez.') }}</h1><p>{{ view==='daily'?'Atividades de todos os projetos, no seu ritmo.':view==='calendar'?'Planeje suas entregas, encontre espaço e veja suas ideias avançarem.':currentProject?'Organize seus passos e acompanhe cada conquista.':view==='projects'?'Reúna suas tasks, dê forma às ideias e comece algo novo.':'Organize suas ideias. Desbloqueie seus próximos passos.' }}</p><div class="hero-date">{{ today }}</div></div></section>
+   <header class="topbar"><div class="breadcrumb"><button class="icon-btn mobile-menu" aria-label="Abrir menu" @click="sidebarOpen=!sidebarOpen"><PanelLeftOpen :size="21" /></button><span>Meu espaço</span><ChevronRight :size="14" /><strong>{{ view==='whiteboard'?'Quadro de ideias':view==='work-history'?'Histórico de horas':view==='profile'?'Configurações do perfil':view==='daily'?'Meu dia':view==='calendar'?'Calendário':view==='projects'?'Projetos':currentProject?.title|| (selectedProject==='none'?'Sem projeto':'Meu quadro') }}</strong></div><div class="save-indicator"><LoaderCircle v-if="state.saving || workHours.state.saving || historySaving || whiteboardBusy" :size="13" class="spin" /><Check v-else :size="13" /><span>{{ state.saving || workHours.state.saving || historySaving || whiteboardBusy?(whiteboard.state.error?'Quadro com alterações não salvas':'Salvando...'):'Tudo salvo localmente' }}</span></div><div class="account-controls"><button class="account-identity" :title="auth.user?.email" aria-label="Abrir configurações do perfil" @click="openProfile"><span class="account-avatar">{{ auth.user?.name?.slice(0,1).toUpperCase() }}</span><span class="truncate">{{ auth.user?.name }}</span></button><button class="account-exit" :disabled="logoutBusy || !!state.saving || workHours.state.saving || historySaving || whiteboardBusy" @click="logout"><LogOut :size="15" /> {{ logoutBusy?'Saindo...':'Sair' }}</button></div></header>
+   <main class="main-content" :class="{'sketch-main':view==='whiteboard'}">
+    <section v-if="!['profile','work-history','whiteboard'].includes(view)" class="hero" :class="{'project-hero':currentProject,'calendar-hero':view==='calendar'}" :style="currentProject?.cover_path?{backgroundImage:'url('+currentProject.cover_path+')'}:undefined"><img v-if="!currentProject?.cover_path" :src="view==='calendar'?'/ui/calendar-garden.svg':'/ui/hero.png'" :alt="view==='calendar'?'Ilustração de um calendário entre plantas e ideias':'Ilustração de uma mesa criativa com notebook, plantas e caderno'" class="hero-image" :class="currentProject?.cover"><div class="hero-shade"></div><div class="hero-content"><span class="eyebrow"><span class="hero-dot"></span>{{ view==='daily'?'UM DIA PARA CADA PEQUENA CONQUISTA':view==='calendar'?'SEU CALENDÁRIO DE ENTREGAS':currentProject?'ESPAÇO DO PROJETO':'SEU ESPAÇO PARA FAZER ACONTECER' }}</span><h1>{{ view==='daily'?'Hoje, um passo de cada vez.':view==='calendar'?'Dê um dia às suas ideias.':currentProject?.title || (view==='projects'?'Toda ideia merece um espaço.':'Um passo de cada vez.') }}</h1><p>{{ view==='daily'?'Atividades de todos os projetos, no seu ritmo.':view==='calendar'?'Planeje suas entregas, encontre espaço e veja suas ideias avançarem.':currentProject?'Organize seus passos e acompanhe cada conquista.':view==='projects'?'Reúna suas tasks, dê forma às ideias e comece algo novo.':'Organize suas ideias. Desbloqueie seus próximos passos.' }}</p><div class="hero-date">{{ today }}</div></div></section>
     <ProfileSettings v-if="view==='profile'" :work-hours="workHours" :initial-date="profileDate" @open-widget="showWorkWidget" @open-history="changeView('work-history')" />
     <WorkHistory v-else-if="view==='work-history'" :work-hours="workHours" @register="openProfile" @saving-change="historySaving=$event" />
+    <FluxoWhiteboard v-else-if="view==='whiteboard'" :board="whiteboard" />
     <template v-else-if="state.loading"><div class="loading-state"><LoaderCircle :size="28" class="spin" /><p>Abrindo seu espaço...</p></div></template>
     <div v-else-if="state.error" class="error-state"><p>{{ state.error }}</p><button class="btn primary" @click="load"><RefreshCw :size="16" /> Tentar novamente</button></div>
     <template v-else>
@@ -208,6 +214,6 @@ onMounted(load);
   text-align: left;
 }
 .account-identity:hover {
-  color: #5978ed;
+  color: var(--theme-accent, #5978ed);
 }
 </style>
