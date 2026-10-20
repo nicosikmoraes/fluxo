@@ -17,25 +17,25 @@ defineProps({ summary: { type: Object, required: true } });
 
 <style scoped>
 .averages-card {
-  border: 1px solid #e6ecf6;
+  border: 1px solid var(--theme-line, #e6ecf6);
   border-radius: 13px;
-  background: #fff;
+  background: var(--theme-panel, #fff);
   padding: 24px;
 }
 header > span {
   font-size: 8px;
   letter-spacing: 1.4px;
-  color: #a2b0c8;
+  color: var(--theme-text-muted, #a2b0c8);
 }
 header h2 {
   margin: 9px 0 7px;
-  color: #7389ad;
+  color: var(--theme-text-secondary, #7389ad);
   font-size: 15px;
   font-weight: 550;
 }
 header p {
   font-size: 10px;
-  color: #9caac0;
+  color: var(--theme-text-muted, #9caac0);
   line-height: 1.8;
 }
 .average-row {
@@ -43,7 +43,7 @@ header p {
   align-items: center;
   gap: 12px;
   padding: 18px 0;
-  border-bottom: 1px solid #f0f3f8;
+  border-bottom: 1px solid var(--theme-line, #f0f3f8);
 }
 .average-icon {
   width: 35px;
@@ -51,37 +51,37 @@ header p {
   display: grid;
   place-items: center;
   border-radius: 10px;
-  background: #f1f5ff;
-  color: #91a7d7;
+  background: var(--theme-surface-muted, #f1f5ff);
+  color: var(--theme-text-muted, #91a7d7);
   flex-shrink: 0;
 }
 .violet {
-  background: #f5f1fb;
-  color: #b09acf;
+  background: var(--theme-accent-soft, #f5f1fb);
+  color: var(--theme-text-muted, #b09acf);
 }
 .mint {
-  background: #f0f7f3;
-  color: #9abaac;
+  background: var(--theme-success-soft, #f0f7f3);
+  color: var(--theme-success, #9abaac);
 }
 .peach {
-  background: #fcf4ee;
-  color: #c5a58b;
+  background: var(--theme-warning-soft, #fcf4ee);
+  color: var(--theme-warning, #c5a58b);
 }
 .average-row p {
   font-size: 9px;
-  color: #9aabc3;
+  color: var(--theme-text-muted, #9aabc3);
   margin-bottom: 6px;
 }
 .average-row strong {
   font-size: 21px;
   font-weight: 500;
   letter-spacing: -.6px;
-  color: #7e95b9;
+  color: var(--theme-text-secondary, #7e95b9);
   font-variant-numeric: tabular-nums;
 }
 .average-unit {
   margin-left: auto;
-  color: #a9b6cb;
+  color: var(--theme-text-muted, #a9b6cb);
   font-size: 8px;
   white-space: nowrap;
 }
@@ -89,7 +89,7 @@ footer {
   margin-top: 15px;
   font-size: 9px;
   line-height: 1.9;
-  color: #a8b5c9;
+  color: var(--theme-text-muted, #a8b5c9);
 }
 @media (max-width: 480px) {
   .averages-card {

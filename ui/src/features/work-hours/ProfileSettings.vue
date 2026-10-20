@@ -4,6 +4,7 @@ import { CheckCircle2, Clock3, LoaderCircle, RefreshCw, Settings2 } from "@lucid
 import { auth } from "../auth/auth";
 import { notify } from "../../state/workspace";
 import WorkHoursSettings from "./WorkHoursSettings.vue";
+import AppearanceSettings from "../appearance/AppearanceSettings.vue";
 import { defaultWorkSettings, emptyWorkEntries, parseWorkTime, validateWorkSettings, workTimeInTimezone } from "./workHours";
 
 const props = defineProps({ workHours: { type: Object, required: true }, initialDate: { type: String, default: "" } });
@@ -134,6 +135,7 @@ function selectDate(value) {
       <div class="profile-settings-ornament" aria-hidden="true"><Clock3 :size="43" /></div>
     </header>
     <div class="profile-settings-account"><span class="profile-settings-avatar">{{ auth.user?.name?.slice(0, 1).toUpperCase() }}</span><div><strong>{{ auth.user?.name }}</strong><span>{{ auth.user?.email }}</span></div><Settings2 :size="16" /></div>
+    <AppearanceSettings />
     <div class="profile-settings-tabs"><span><Clock3 :size="14" /> Jornada de trabalho</span><button class="text-btn profile-history-link" :disabled="busy" @click="emit('open-history')">Ver histórico de horas <Clock3 :size="13" /></button></div>
 
     <div v-if="!initialized && workHours.state.loading" class="loading-state"><LoaderCircle :size="24" class="spin" /><p>Carregando seu perfil...</p></div>
@@ -160,19 +162,19 @@ function selectDate(value) {
   padding: 3px 0 24px;
 }
 .profile-settings-heading > div > span {
-  color: #a2b0c8;
+  color: var(--theme-text-muted, #a2b0c8);
   font-size: 8px;
   letter-spacing: 1.5px;
 }
 .profile-settings-heading h1 {
-  color: #7790b8;
+  color: var(--theme-text-secondary, #7790b8);
   font-size: 28px;
   font-weight: 500;
   letter-spacing: -.9px;
   margin-top: 10px;
 }
 .profile-settings-heading p {
-  color: #a0aec5;
+  color: var(--theme-text-muted, #a0aec5);
   font-size: 11px;
   margin-top: 10px;
 }
@@ -181,8 +183,8 @@ function selectDate(value) {
   place-items: center;
   width: 90px;
   height: 75px;
-  color: #c6d6f0;
-  border: 1px dashed #dae4f4;
+  color: var(--theme-text-muted, #c6d6f0);
+  border: 1px dashed var(--theme-line, #dae4f4);
   border-radius: 50%;
   transform: rotate(-12deg);
   margin-right: 18px;
@@ -195,9 +197,9 @@ function selectDate(value) {
   align-items: center;
   gap: 11px;
   padding: 14px 17px;
-  border: 1px solid #e8edf7;
+  border: 1px solid var(--theme-line, #e8edf7);
   border-radius: 11px;
-  background: #fff;
+  background: var(--theme-panel, #fff);
   margin-bottom: 24px;
 }
 .profile-settings-avatar {
@@ -206,25 +208,25 @@ function selectDate(value) {
   height: 35px;
   width: 35px;
   border-radius: 11px;
-  background: #eef3ff;
-  color: #94a9d1;
+  background: var(--theme-surface-muted, #eef3ff);
+  color: var(--theme-text-muted, #94a9d1);
   font-size: 12px;
 }
 .profile-settings-account strong {
   display: block;
-  color: #8297b8;
+  color: var(--theme-text-secondary, #8297b8);
   font-weight: 550;
   font-size: 11px;
 }
 .profile-settings-account div > span {
   display: block;
-  color: #a5b3ca;
+  color: var(--theme-text-muted, #a5b3ca);
   font-size: 10px;
   margin-top: 5px;
   overflow-wrap: anywhere;
 }
 .profile-settings-account > svg {
-  color: #b2bfd6;
+  color: var(--theme-text-muted, #b2bfd6);
   margin-left: auto;
   flex-shrink: 0;
 }
@@ -232,7 +234,7 @@ function selectDate(value) {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid #e4eaf5;
+  border-bottom: 1px solid var(--theme-line, #e4eaf5);
   margin-bottom: 22px;
   gap: 14px;
 }
@@ -245,22 +247,22 @@ function selectDate(value) {
 }
 .profile-settings-tabs > span {
   font-size: 10px;
-  color: #7c98d5;
-  border-bottom: 2px solid #8aa5df;
+  color: var(--theme-text-muted, #7c98d5);
+  border-bottom: 2px solid var(--theme-line-strong, #8aa5df);
   margin-bottom: -1px;
 }
 .profile-settings-tabs small {
-  color: #acbad0;
+  color: var(--theme-text-muted, #acbad0);
   font-size: 8px;
 }
 .profile-settings-error {
   padding: 15px 17px;
-  background: #fff5f5;
-  border: 1px solid #f3dfe4;
+  background: var(--theme-danger-soft, #fff5f5);
+  border: 1px solid var(--theme-danger-line, #f3dfe4);
   border-radius: 10px;
   font-size: 11px;
   line-height: 1.8;
-  color: #ad6575;
+  color: var(--theme-danger, #ad6575);
   margin-bottom: 18px;
 }
 .profile-settings-error .text-btn {
@@ -268,7 +270,7 @@ function selectDate(value) {
   font-size: 10px;
 }
 .profile-settings-footnote {
-  color: #a6b5cd;
+  color: var(--theme-text-muted, #a6b5cd);
   font-size: 9px;
   line-height: 1.9;
   margin-top: 5px;

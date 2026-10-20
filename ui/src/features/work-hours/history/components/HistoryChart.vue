@@ -52,8 +52,8 @@ const ticks = computed(() => [0, 1, 2, 3].map((index) => ({ value: index * ceili
 
 <style scoped>
 .chart-card {
-  background: #fff;
-  border: 1px solid #e6ecf6;
+  background: var(--theme-panel, #fff);
+  border: 1px solid var(--theme-line, #e6ecf6);
   border-radius: 13px;
   padding: 24px;
   min-width: 0;
@@ -67,19 +67,19 @@ header {
 .chart-eyebrow {
   font-size: 8px;
   letter-spacing: 1.3px;
-  color: #a2b0c8;
+  color: var(--theme-text-muted, #a2b0c8);
 }
 h2 {
   font-size: 15px;
-  color: #7389ad;
+  color: var(--theme-text-secondary, #7389ad);
   font-weight: 550;
   margin-top: 9px;
   line-height: 1.6;
 }
 .chart-toggle {
   display: flex;
-  background: #f4f7fc;
-  border: 1px solid #e9eef7;
+  background: var(--theme-surface-muted, #f4f7fc);
+  border: 1px solid var(--theme-line, #e9eef7);
   border-radius: 7px;
   padding: 3px;
   flex-shrink: 0;
@@ -88,19 +88,19 @@ h2 {
   font-size: 9px;
   padding: 7px 9px;
   border-radius: 5px;
-  color: #9aaac5;
+  color: var(--theme-text-muted, #9aaac5);
 }
 .chart-toggle button.active {
-  color: #819bd1;
-  background: #fff;
-  box-shadow: 0 1px 5px #5e79b012;
+  color: var(--theme-accent, #819bd1);
+  background: var(--theme-accent-soft, #fff);
+  box-shadow: 0 1px 5px var(--theme-shadow-soft, #5e79b012);
 }
 .chart-legend {
   display: flex;
   gap: 17px;
   flex-wrap: wrap;
   margin: 24px 0 0;
-  color: #99a9c0;
+  color: var(--theme-text-muted, #99a9c0);
   font-size: 9px;
 }
 .chart-legend span {
@@ -112,15 +112,15 @@ h2 {
   width: 7px;
   height: 7px;
   border-radius: 2px;
-  background: #bdcdef;
+  background: var(--theme-accent-soft, #bdcdef);
 }
 .chart-legend i.extra {
-  background: #bba6d7;
+  background: var(--theme-accent, #bba6d7);
 }
 .chart-legend i.target {
   width: 14px;
   height: 0;
-  border-top: 1px dashed #aab9d9;
+  border-top: 1px dashed var(--theme-line-strong, #aab9d9);
 }
 .chart-target-legend {
   margin-left: auto;
@@ -132,11 +132,11 @@ h2 {
   gap: 9px;
   min-height: 57px;
   font-size: 9px;
-  color: #9aaac3;
+  color: var(--theme-text-muted, #9aaac3);
 }
 .chart-tooltip b {
   font-weight: 550;
-  color: #7892be;
+  color: var(--theme-text-secondary, #7892be);
 }
 .chart-scroll {
   overflow-x: auto;
@@ -151,30 +151,30 @@ h2 {
   position: absolute;
   left: 0;
   right: 0;
-  border-top: 1px solid #f0f3f8;
+  border-top: 1px solid var(--theme-line, #f0f3f8);
 }
 .chart-gridline > span {
   position: absolute;
   left: -29px;
   top: -6px;
   font-size: 8px;
-  color: #b1bdd0;
+  color: var(--theme-text-muted, #b1bdd0);
 }
 .chart-goal {
   position: absolute;
   left: 0;
   right: 0;
-  border-top: 1px dashed #aebfdf;
+  border-top: 1px dashed var(--theme-line-strong, #aebfdf);
   z-index: 2;
   pointer-events: none;
 }
 .chart-goal span {
   font-size: 7px;
-  color: #9cafcf;
+  color: var(--theme-text-muted, #9cafcf);
   position: absolute;
   top: -12px;
   right: 0;
-  background: #ffffffdc;
+  background: var(--theme-panel, #ffffffdc);
 }
 .chart-bars {
   height: 100%;
@@ -202,23 +202,23 @@ h2 {
   width: 100%;
   max-width: 33px;
   min-height: 2px;
-  background: #bdcdef;
+  background: var(--theme-accent-soft, #bdcdef);
   border-radius: 5px 5px 0 0;
   overflow: hidden;
 }
 .chart-bar:hover,
 .chart-bar-hover {
-  background: #9fb7e6;
+  background: var(--theme-accent, #9fb7e6);
 }
 .chart-extra-bar {
   width: 100%;
-  background: #bba6d7;
+  background: var(--theme-accent, #bba6d7);
   flex-shrink: 0;
 }
 .chart-day-label {
   position: absolute;
   top: calc(100% + 12px);
-  color: #a0afc5;
+  color: var(--theme-text-muted, #a0afc5);
   font-size: 8px;
   white-space: nowrap;
 }
@@ -227,11 +227,11 @@ footer {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  border-top: 1px solid #f0f3f8;
+  border-top: 1px solid var(--theme-line, #f0f3f8);
   margin-top: 20px;
   padding-top: 17px;
   font-size: 8px;
-  color: #a5b3c9;
+  color: var(--theme-text-muted, #a5b3c9);
   line-height: 1.8;
 }
 footer span:first-child {
@@ -246,7 +246,7 @@ footer span:first-child {
   gap: 14px;
   align-items: center;
   justify-content: center;
-  color: #a8b9d7;
+  color: var(--theme-text-muted, #a8b9d7);
   font-size: 11px;
 }
 @media (max-width: 600px) {

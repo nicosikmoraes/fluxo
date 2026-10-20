@@ -12,7 +12,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
 #[Fillable(['name', 'email', 'password'])]
-#[Hidden(['password', 'remember_token', 'work_settings', 'work_settings_version'])]
+#[Hidden(['password', 'remember_token', 'work_settings', 'work_settings_version', 'whiteboard', 'whiteboard_version'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
@@ -30,11 +30,18 @@ class User extends Authenticatable
             'password' => 'hashed',
             'work_settings' => 'encrypted:array',
             'work_settings_version' => 'integer',
+            'whiteboard' => 'array',
+            'whiteboard_version' => 'integer',
         ];
     }
 
     public function workDays(): HasMany
     {
         return $this->hasMany(WorkDay::class);
+    }
+
+    public function whiteboards(): HasMany
+    {
+        return $this->hasMany(Whiteboard::class);
     }
 }

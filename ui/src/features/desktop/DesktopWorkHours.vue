@@ -131,14 +131,14 @@ onUnmounted(() => {
   display: grid;
   justify-items: start;
   gap: 15px;
-  color: #8b9dbd;
-  border: 1px solid #e1e7f2;
+  color: var(--theme-text-muted, #8b9dbd);
+  border: 1px solid var(--theme-line, #e1e7f2);
   border-radius: 16px;
-  background: #fff;
+  background: var(--theme-panel, #fff);
 }
 
 .desktop-jornada-card h1 {
-  color: #7189b2;
+  color: var(--theme-text-secondary, #7189b2);
   font-size: 19px;
   font-weight: 550;
   line-height: 1.4;
@@ -162,10 +162,10 @@ onUnmounted(() => {
   align-items: center;
   gap: 6px;
   padding: 8px 12px;
-  border-top: 1px solid #edf1f8;
-  background: #fff;
+  border-top: 1px solid var(--theme-line, #edf1f8);
+  background: var(--theme-panel, #fff);
   font-size: 9px;
-  color: #98a7bd;
+  color: var(--theme-text-muted, #98a7bd);
 }
 
 .desktop-jornada-tools span {
@@ -175,22 +175,22 @@ onUnmounted(() => {
 .desktop-jornada-tools button {
   padding: 5px;
   border-radius: 5px;
-  background: #fff;
-  color: #a4b0c3;
-  border: 1px solid #e6ebf5;
+  background: var(--theme-panel, #fff);
+  color: var(--theme-text-muted, #a4b0c3);
+  border: 1px solid var(--theme-line, #e6ebf5);
 }
 
 .desktop-jornada-tools button.active {
-  color: #6b89dd;
-  background: #f0f4ff;
+  color: var(--theme-accent, #6b89dd);
+  background: var(--theme-accent-soft, #f0f4ff);
 }
 
 .desktop-jornada-toast {
   margin-top: 8px;
-  border: 1px solid #e1e9f8;
+  border: 1px solid var(--theme-line, #e1e9f8);
   border-radius: 8px;
-  background: #f4f7ff;
-  color: #718ab9;
+  background: var(--theme-surface-muted, #f4f7ff);
+  color: var(--theme-text-secondary, #718ab9);
   padding: 10px;
   font-size: 10px;
   line-height: 1.7;
@@ -198,8 +198,8 @@ onUnmounted(() => {
 }
 
 .desktop-jornada-toast.error {
-  color: #ad6575;
-  background: #fff5f5;
-  border-color: #f3dfe4;
+  color: var(--theme-danger, #ad6575);
+  background: var(--theme-danger-soft, #fff5f5);
+  border-color: var(--theme-danger-line, #f3dfe4);
 }
 </style>

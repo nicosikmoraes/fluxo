@@ -3,6 +3,7 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DailyListController as D;
 use App\Http\Controllers\RoadmapController as R;
+use App\Http\Controllers\WhiteboardController;
 use App\Http\Controllers\WorkHistoryController;
 use App\Http\Controllers\WorkHoursController;
 use App\Http\Controllers\WorkspaceController as W;
@@ -16,6 +17,14 @@ Route::post('/auth/reset-password', [AuthController::class, 'resetPassword'])->m
 
 Route::middleware(['auth', 'auth.session'])->group(function (): void {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
+    Route::get('/whiteboards', [WhiteboardController::class, 'index']);
+    Route::post('/whiteboards', [WhiteboardController::class, 'storeBoard']);
+    Route::patch('/whiteboards/{whiteboard}', [WhiteboardController::class, 'renameBoard']);
+    Route::delete('/whiteboards/{whiteboard}', [WhiteboardController::class, 'destroyBoard']);
+    Route::get('/whiteboards/{whiteboard}/content', [WhiteboardController::class, 'showNamed']);
+    Route::put('/whiteboards/{whiteboard}/content', [WhiteboardController::class, 'updateNamed']);
+    Route::get('/whiteboard', [WhiteboardController::class, 'show']);
+    Route::put('/whiteboard', [WhiteboardController::class, 'update']);
     Route::get('/profile/work-hours', [WorkHoursController::class, 'index']);
     Route::put('/profile/work-hours', [WorkHoursController::class, 'update']);
     Route::post('/profile/work-hours/records', [WorkHoursController::class, 'record']);
