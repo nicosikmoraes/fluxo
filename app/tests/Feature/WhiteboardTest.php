@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use App\Models\Whiteboard;
-use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
@@ -12,16 +11,6 @@ use Tests\TestCase;
 class WhiteboardTest extends TestCase
 {
     use RefreshDatabase;
-
-    public function createApplication(): Application
-    {
-        $app = parent::createApplication();
-        if ($app['config']->get('database.default') !== 'sqlite' || $app['config']->get('database.connections.sqlite.database') !== ':memory:') {
-            throw new \RuntimeException('Estes testes só podem usar SQLite em memória.');
-        }
-
-        return $app;
-    }
 
     private function element(array $attributes = []): array
     {

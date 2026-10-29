@@ -1,13 +1,14 @@
 <script setup>
+import { t } from "../../state/locale";
 import { Moon, Sun } from "@lucide/vue";
 import { theme, toggleTheme } from "./theme";
 </script>
 
 <template>
-  <button class="nav-item appearance-toggle" type="button" role="switch" :aria-checked="theme === 'graphite'" :aria-label="theme === 'graphite' ? 'Tema Grafite ativado. Trocar para o tema claro' : 'Ativar tema escuro Grafite'" @click="toggleTheme">
+  <button class="nav-item appearance-toggle" type="button" role="switch" :aria-checked="theme === 'graphite'" :aria-label="theme === 'graphite' ? t('Tema Grafite ativado. Trocar para o tema claro') : t('Ativar tema escuro Grafite')" @click="toggleTheme">
     <Moon v-if="theme === 'graphite'" :size="17" />
     <Sun v-else :size="17" />
-    <span>{{ theme === 'graphite' ? 'Tema Grafite' : 'Tema claro' }}</span>
+    <span>{{ theme === 'graphite' ? t('Tema Grafite') : t('Tema claro') }}</span>
     <span class="appearance-switch" aria-hidden="true"><i></i></span>
   </button>
 </template>

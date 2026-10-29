@@ -3,6 +3,7 @@ import { computed, ref } from "vue";
 import { ArrowUpRight, Check, ChevronUp, Clock3, Coffee, GripVertical, LogOut, Play, Pause, Settings2, TrendingUp, X } from "@lucide/vue";
 import { formatWorkDuration, formatWorkMoney, formatWorkTime } from "./workHours";
 import { useDraggableWidget } from "./useDraggableWidget";
+import { currentLocale, t } from "../../state/locale";
 
 const props = defineProps({
   day: { type: Object, required: true },
@@ -11,18 +12,22 @@ const props = defineProps({
   busy: { type: Boolean, default: false },
   nativeWindow: { type: Boolean, default: false },
   positionKey: { type: String, default: "" },
+  hourlyRate: { type: [Number, String], default: null },
 });
 
 const emit = defineEmits(["update:expanded", "finish", "settings", "action", "drag", "hide", "move"]);
 const anchor = ref(null);
 const { style: positionStyle, dragging, start: startDragging, captureClick, moveWithKeyboard } = useDraggableWidget(anchor, () => props.positionKey);
 const isExtra = computed(() => props.day.overtimeSeconds > 0);
-const statusLabel = computed(() => props.day.stale ? "Revise os horários" : props.day.finished ? "Jornada encerrada" : !props.day.started ? "Pronto para começar" : props.day.paused ? "Em pausa" : isExtra.value ? "Em hora extra" : "Em andamento");
-const duration = computed(() => formatWorkDuration(isExtra.value ? props.day.overtimeSeconds : props.day.remainingSeconds));
+const englishMode = computed(() => currentLocale.value === "en-US");
+const statusLabel = computed(() => props.day.stale ? t("Revise os horários") : props.day.finished ? t("Jornada encerrada") : !props.day.started ? t("Pronto para começar") : props.day.paused ? t("Em pausa") : isExtra.value ? t("Em hora extra") : t("Em andamento"));
+const duration = computed(() => formatWorkDuration(englishMode.value ? props.day.workedSeconds : isExtra.value ? props.day.overtimeSeconds : props.day.remainingSeconds));
 const compactLabel = computed(() => {
-  if (!props.day.started) return "Iniciar meu trabalho";
-  if (props.day.paused) return "Jornada em pausa";
-  if (props.day.finished) return isExtra.value ? `+${duration.value} hoje` : "Jornada encerrada";
+  if (!props.day.started) return t("Iniciar meu trabalho");
+  if (props.day.paused) return t("Jornada em pausa");
+  if (props.day.finished && englishMode.value) return `${formatWorkDuration(props.day.workedSeconds)} worked today`;
+  if (englishMode.value) return `${formatWorkDuration(props.day.workedSeconds)} worked`;
+  if (props.day.finished) return isExtra.value ? `+${duration.value} hoje` : t("Jornada encerrada");
   return isExtra.value ? `+${duration.value} extras` : `${duration.value} para sair`;
 });
 
@@ -52,71 +57,77 @@ function collapseFromHeader(event) {
 <template>
   <div v-if="day.valid && day.showWidget" ref="anchor" class="work-widget-anchor" :class="{ 'is-extra': isExtra, 'is-dragging': dragging, 'is-native': nativeWindow }" :style="nativeWindow ? undefined : positionStyle" @click.capture="captureClick">
     <Transition name="work-widget" mode="out-in">
-      <section v-if="expanded" key="expanded" class="work-widget" aria-label="Resumo da sua jornada">
-        <header class="work-widget-header" title="Clique para recolher ou arraste para mover" @pointerdown="startWidgetDrag" @click="collapseFromHeader">
-          <button class="work-widget-drag-handle" type="button" data-widget-drag-handle aria-label="Mover widget da jornada" title="Arraste para mover. Use as setas do teclado para ajustar." @keydown="moveWidgetWithKeyboard"><GripVertical :size="14" /></button>
+      <section v-if="expanded" key="expanded" class="work-widget" :aria-label="t('Resumo da sua jornada')">
+        <header class="work-widget-header" :title="t('Clique para recolher ou arraste para mover')" @pointerdown="startWidgetDrag" @click="collapseFromHeader">
+          <button class="work-widget-drag-handle" type="button" data-widget-drag-handle :aria-label="t('Mover widget da jornada')" :title="t('Arraste para mover. Use as setas do teclado para ajustar.')" @keydown="moveWidgetWithKeyboard"><GripVertical :size="14" /></button>
           <span class="work-widget-icon"><Clock3 :size="17" /></span>
           <div>
-            <strong>Sua jornada</strong>
-            <span>Um tempo para cada coisa.</span>
+            <strong>{{ t("Sua jornada") }}</strong>
+            <span>{{ t("Um tempo para cada coisa.") }}</span>
           </div>
-          <button class="work-widget-icon-button" aria-label="Abrir configurações da jornada" @click="emit('settings')"><Settings2 :size="15" /></button>
-          <button class="work-widget-icon-button" :aria-label="nativeWindow ? 'Esconder widget perto do relógio' : 'Recolher widget da jornada'" @click="nativeWindow ? emit('hide') : emit('update:expanded', false)"><X :size="16" /></button>
+          <button class="work-widget-icon-button" :aria-label="t('Abrir configurações da jornada')" @click="emit('settings')"><Settings2 :size="15" /></button>
+          <button class="work-widget-icon-button" :aria-label="nativeWindow ? t('Esconder widget perto do relógio') : t('Recolher widget da jornada')" @click="nativeWindow ? emit('hide') : emit('update:expanded', false)"><X :size="16" /></button>
         </header>
 
         <div class="work-widget-body">
           <span class="work-widget-status"><i></i>{{ statusLabel }}</span>
-          <p class="work-widget-caption">{{ !day.started ? 'Comece pelo widget' : day.weekend ? 'Todo o tempo conta como extra' : isExtra ? 'Além da sua jornada' : day.finished ? 'Meta do dia' : 'Tempo restante' }}</p>
+          <p class="work-widget-caption">{{ englishMode ? (!day.started ? 'Start tracking here' : day.finished ? 'Time tracked today' : 'Time worked') : (!day.started ? t('Comece pelo widget') : day.weekend ? t('Todo o tempo conta como extra') : isExtra ? t('Além da sua jornada') : day.finished ? t('Meta do dia') : t('Tempo restante')) }}</p>
           <div class="work-widget-duration" :class="{ 'is-idle': !day.started }">
             <TrendingUp v-if="isExtra" :size="24" />
             <Check v-else-if="day.finished && !day.remainingSeconds" :size="24" />
-            <strong>{{ !day.started ? 'Vamos começar?' : day.finished && !isExtra && !day.remainingSeconds ? 'Tudo certo!' : (isExtra ? '+' : '') + duration }}</strong>
+            <strong>{{ !day.started ? t('Vamos começar?') : englishMode ? duration : day.finished && !isExtra && !day.remainingSeconds ? t('Tudo certo!') : (isExtra ? '+' : '') + duration }}</strong>
           </div>
-          <p class="work-widget-departure">
-            <template v-if="day.finished">Saída registrada às <b>{{ entries.finishedAt }}</b></template>
-            <template v-else-if="day.paused">O contador está pausado.</template>
-            <template v-else-if="day.weekend">Adicional atual de <b>{{ day.currentPremium }}%</b>.</template>
-            <template v-else-if="day.started">Seu dia fica completo às <b>{{ formatWorkTime(day.departureMinutes) }}</b><span v-if="day.departureNextDay"> do dia seguinte</span></template>
+          <p v-if="englishMode" class="work-widget-departure">{{ day.finished ? `Finished at ${entries.finishedAt}` : day.paused ? 'The timer is paused.' : 'Your work time is being tracked.' }}</p>
+          <p v-else class="work-widget-departure">
+            <template v-if="day.finished">{{ t("Saída registrada às") }} <b>{{ entries.finishedAt }}</b></template>
+            <template v-else-if="day.paused">{{ t("O contador está pausado.") }}</template>
+            <template v-else-if="day.weekend">{{ t("Adicional atual de") }} <b>{{ day.currentPremium }}%</b>.</template>
+            <template v-else-if="day.started">{{ t("Seu dia fica completo às") }} <b>{{ formatWorkTime(day.departureMinutes) }}</b><span v-if="day.departureNextDay"> {{ t("do dia seguinte") }}</span></template>
           </p>
-          <p v-if="day.finished && day.remainingSeconds" class="work-widget-shortfall">Faltaram {{ duration }} para a meta diária.</p>
+          <p v-if="day.finished && day.remainingSeconds" class="work-widget-shortfall">{{ t("Faltaram") }} {{ duration }} {{ t("para a meta diária.") }}</p>
 
-          <div v-if="!day.weekend" class="work-widget-progress" role="progressbar" :aria-valuenow="Math.round(day.progress)" :aria-valuemin="0" :aria-valuemax="100" aria-label="Progresso da jornada diária">
+          <div v-if="!englishMode && !day.weekend" class="work-widget-progress" role="progressbar" :aria-valuenow="Math.round(day.progress)" :aria-valuemin="0" :aria-valuemax="100" :aria-label="t('Progresso da jornada diária')">
             <span :style="{ width: day.progress + '%' }"></span>
           </div>
-          <div class="work-widget-progress-label"><span>{{ formatWorkDuration(day.workedSeconds) }} trabalhadas</span><span>{{ day.weekend ? 'Tudo em hora extra' : 'Meta ' + formatWorkDuration(day.targetSeconds) }}</span></div>
+          <div class="work-widget-progress-label"><span>{{ formatWorkDuration(day.workedSeconds) }} {{ englishMode ? 'worked' : t('trabalhadas') }}</span><span v-if="!englishMode">{{ day.weekend ? t('Tudo em hora extra') : t('Meta ') + formatWorkDuration(day.targetSeconds) }}</span></div>
+
+          <div v-if="englishMode && day.started && day.hourlyEarnings != null" class="work-widget-money">
+            <span>Pay earned today <small>estimated</small></span>
+            <strong>{{ formatWorkMoney(day.hourlyEarnings) }}</strong>
+          </div>
 
           <div v-if="isExtra && day.overtimeMoney !== null" class="work-widget-money">
-            <span>Extras de hoje <small>valor estimado</small></span>
+            <span>{{ t("Extras de hoje") }} <small>{{ t("valor estimado") }}</small></span>
             <strong>{{ formatWorkMoney(day.overtimeMoney) }}</strong>
           </div>
-          <div v-else-if="isExtra" class="work-widget-no-salary"><TrendingUp :size="14" /><span>Seu tempo extra está sendo contado.</span></div>
+          <div v-else-if="isExtra" class="work-widget-no-salary"><TrendingUp :size="14" /><span>{{ t("Seu tempo extra está sendo contado.") }}</span></div>
 
           <div class="work-widget-timeline">
-            <div><span>Entrada</span><strong>{{ entries.startedAt || '—' }}</strong></div>
+            <div><span>{{ t("Entrada") }}</span><strong>{{ entries.startedAt || '—' }}</strong></div>
             <span class="work-widget-divider"></span>
-            <div><span><Coffee :size="11" /> Pausas</span><strong>{{ formatWorkDuration(day.lunchSeconds) }}</strong></div>
+            <div><span><Coffee :size="11" /> {{ t("Pausas") }}</span><strong>{{ formatWorkDuration(day.lunchSeconds) }}</strong></div>
             <span class="work-widget-divider"></span>
-            <div><span>Saída</span><strong>{{ entries.finishedAt || '—' }}</strong></div>
+            <div><span>{{ t("Saída") }}</span><strong>{{ entries.finishedAt || '—' }}</strong></div>
           </div>
         </div>
 
-        <p class="work-widget-cycle">{{ formatWorkDuration(day.cycleOvertimeSeconds) }} extras no ciclo · após 20h: 75% · domingo: 100%</p>
+        <p v-if="!englishMode" class="work-widget-cycle">{{ formatWorkDuration(day.cycleOvertimeSeconds) }} {{ t("extras no ciclo · após 20h: 75% · domingo: 100%") }}</p>
         <footer class="work-widget-footer">
-          <button v-if="!day.started" class="work-widget-finish" :disabled="busy || day.stale" @click="emit('action', 'start')"><Play :size="14" /> Iniciar trabalho</button>
+          <button v-if="!day.started" class="work-widget-finish" :disabled="busy || day.stale" @click="emit('action', 'start')"><Play :size="14" /> {{ t("Iniciar trabalho") }}</button>
           <template v-else-if="!day.finished && !day.stale">
-            <button class="work-widget-finish" :disabled="busy" @click="emit('action', day.paused ? 'resume' : 'pause')"><component :is="day.paused ? Play : Pause" :size="14" /> {{ day.paused ? 'Retomar' : 'Pausar' }}</button>
-            <button class="work-widget-finish" :disabled="busy" @click="emit('finish')"><LogOut :size="14" /> {{ busy ? 'Registrando...' : 'Finalizar' }}</button>
+            <button class="work-widget-finish" :disabled="busy" @click="emit('action', day.paused ? 'resume' : 'pause')"><component :is="day.paused ? Play : Pause" :size="14" /> {{ day.paused ? t('Retomar') : t('Pausar') }}</button>
+            <button class="work-widget-finish" :disabled="busy" @click="emit('finish')"><LogOut :size="14" /> {{ busy ? t('Registrando...') : t('Finalizar') }}</button>
           </template>
-          <button v-else class="work-widget-finish finished" @click="emit('settings')"><Check :size="14" /> Ver registros de hoje</button>
-          <button class="work-widget-minimize" aria-label="Recolher widget da jornada" @click="emit('update:expanded', false)">Recolher <ArrowUpRight :size="13" /></button>
+          <button v-else class="work-widget-finish finished" @click="emit('settings')"><Check :size="14" /> {{ t("Ver registros de hoje") }}</button>
+          <button class="work-widget-minimize" :aria-label="t('Recolher widget da jornada')" @click="emit('update:expanded', false)">{{ t("Recolher") }} <ArrowUpRight :size="13" /></button>
         </footer>
         <slot name="tools" />
       </section>
 
-      <button v-else key="compact" class="work-widget-compact" aria-label="Abrir widget da jornada" title="Clique para abrir ou arraste para mover" @pointerdown="startWidgetDrag" @keydown="moveWidgetWithKeyboard" @click="emit('update:expanded', true)">
+      <button v-else key="compact" class="work-widget-compact" :aria-label="t('Abrir widget da jornada')" :title="t('Clique para abrir ou arraste para mover')" @pointerdown="startWidgetDrag" @keydown="moveWidgetWithKeyboard" @click="emit('update:expanded', true)">
         <GripVertical data-widget-drag-handle class="work-widget-compact-grip" :size="13" />
         <span class="work-widget-compact-icon"><Clock3 :size="17" /></span>
-        <span><small>SUA JORNADA</small><strong>{{ compactLabel }}</strong></span>
+        <span><small>{{ t("SUA JORNADA") }}</small><strong>{{ compactLabel }}</strong></span>
         <ChevronUp :size="15" />
       </button>
     </Transition>

@@ -25,16 +25,21 @@ class WorkHoursController extends Controller
 
     public function update(Request $request): JsonResponse
     {
+        $canCalculatePay = $request->user()->hasPro();
+        abort_if(! $canCalculatePay && ($request->filled('settings.monthlySalary') || $request->filled('settings.hourlyRate')), 403, __('O cálculo de pagamento está disponível no Fluxo Pro.'));
+        $hourly = $request->user()->locale === 'en-US';
         $rules = [
-            'settings' => ['required', 'array:enabled,weeklyHours,daysPerWeek,monthlySalary,monthlyHours,overtimePremium,timezone,cycleClosingDay'],
+            'settings' => ['required', 'array:enabled,weeklyHours,daysPerWeek,monthlySalary,hourlyRate,monthlyHours,overtimePremium,overtimeEnabled,timezone,cycleClosingDay'],
             'settings.enabled' => ['required', 'boolean'],
-            'settings.weeklyHours' => ['required', 'numeric', 'min:0.01', 'max:168'],
-            'settings.daysPerWeek' => ['required', 'integer', 'between:1,7'],
-            'settings.monthlySalary' => ['present', 'nullable', 'numeric', 'min:0.01', 'max:999999999', 'decimal:0,2'],
-            'settings.monthlyHours' => ['required', 'numeric', 'min:0.01', 'max:744'],
-            'settings.overtimePremium' => ['required', 'numeric', 'between:0,1000'],
+            'settings.weeklyHours' => [$hourly ? 'exclude' : 'required', 'numeric', 'min:0.01', 'max:168'],
+            'settings.daysPerWeek' => [$hourly ? 'exclude' : 'required', 'integer', 'between:1,7'],
+            'settings.monthlySalary' => [$hourly ? 'exclude' : 'present', 'nullable', 'numeric', 'min:0.01', 'max:999999999', 'decimal:0,2'],
+            'settings.hourlyRate' => [$hourly ? 'sometimes' : 'exclude', 'nullable', 'numeric', 'min:0.01', 'max:999999999', 'decimal:0,2'],
+            'settings.monthlyHours' => [$hourly ? 'exclude' : 'required', 'numeric', 'min:0.01', 'max:744'],
+            'settings.overtimePremium' => [$hourly ? 'exclude' : 'required', 'numeric', 'between:0,1000'],
+            'settings.overtimeEnabled' => ['sometimes', 'boolean'],
             'settings.timezone' => ['required', 'timezone'],
-            'settings.cycleClosingDay' => ['sometimes', 'integer', 'between:1,31'],
+            'settings.cycleClosingDay' => [$hourly ? 'exclude' : 'sometimes', 'integer', 'between:1,31'],
             'settings_version' => ['required', 'integer', 'min:0'],
             'date' => ['required', 'date_format:Y-m-d', 'after_or_equal:1900-01-01'],
             'entry_version' => ['required', 'integer', 'min:0'],
@@ -48,26 +53,30 @@ class WorkHoursController extends Controller
             $rules['entries.'.$step] = ['present', 'nullable', 'date_format:H:i'];
         }
         $data = $request->validate($rules, [
-            'settings.weeklyHours.min' => 'Informe uma jornada semanal maior que zero.',
-            'settings.daysPerWeek.between' => 'Escolha de 1 a 7 dias por semana.',
-            'settings.monthlySalary.min' => 'Informe um salário maior que zero ou deixe em branco.',
-            'settings.monthlyHours.min' => 'Informe uma base mensal maior que zero.',
-            'entries.*.date_format' => 'Confira os horários informados.',
+            'settings.weeklyHours.min' => __('Informe uma jornada semanal maior que zero.'),
+            'settings.daysPerWeek.between' => __('Escolha de 1 a 7 dias por semana.'),
+            'settings.monthlySalary.min' => __('Informe um salário maior que zero ou deixe em branco.'),
+            'settings.monthlyHours.min' => __('Informe uma base mensal maior que zero.'),
+            'entries.*.date_format' => __('Confira os horários informados.'),
         ]);
-        if ($data['settings']['weeklyHours'] / $data['settings']['daysPerWeek'] > 24) {
-            throw ValidationException::withMessages(['settings.weeklyHours' => 'A jornada diária não pode ultrapassar 24 horas.']);
+        if (! $hourly && $data['settings']['weeklyHours'] / $data['settings']['daysPerWeek'] > 24) {
+            throw ValidationException::withMessages(['settings.weeklyHours' => __('A jornada diária não pode ultrapassar 24 horas.')]);
         }
-        $settings = array_replace(WorkDay::defaultSettings($data['settings']['timezone']), $request->user()->work_settings ?? [], $data['settings']);
+        $incomingSettings = $canCalculatePay ? $data['settings'] : array_diff_key($data['settings'], array_flip(['monthlySalary', 'hourlyRate']));
+        $settings = array_replace(WorkDay::defaultSettings($data['settings']['timezone']), $request->user()->work_settings ?? [], $incomingSettings);
         $settings['enabled'] = (bool) $settings['enabled'];
         $settings['weeklyHours'] = (float) $settings['weeklyHours'];
         $settings['daysPerWeek'] = (int) $settings['daysPerWeek'];
         $settings['monthlySalary'] = $settings['monthlySalary'] === null ? null : (float) $settings['monthlySalary'];
+        $settings['hourlyRate'] = $settings['hourlyRate'] === null ? null : (float) $settings['hourlyRate'];
         $settings['monthlyHours'] = (float) $settings['monthlyHours'];
         $settings['overtimePremium'] = (float) $settings['overtimePremium'];
+        $settings['overtimeEnabled'] = $request->user()->locale !== 'en-US';
         $settings['cycleClosingDay'] = (int) $settings['cycleClosingDay'];
         $user = DB::transaction(function () use ($request, $data, $settings): User {
             $user = User::whereKey($request->user()->id)->lockForUpdate()->firstOrFail();
-            abort_if($user->work_settings_version !== (int) $data['settings_version'], 409, 'Suas configurações mudaram em outra aba. Atualize os dados antes de salvar.');
+            $settings['overtimeEnabled'] = $user->locale !== 'en-US';
+            abort_if($user->work_settings_version !== (int) $data['settings_version'], 409, __('Suas configurações mudaram em outra aba. Atualize os dados antes de salvar.'));
             $day = WorkDay::where('work_date', $data['date'])->lockForUpdate()->first();
             $this->checkVersion($day, (int) $data['entry_version']);
             $historical = $data['date'] < now($settings['timezone'])->toDateString();
@@ -102,8 +111,9 @@ class WorkHoursController extends Controller
         $user = DB::transaction(function () use ($request, $data): User {
             $user = User::whereKey($request->user()->id)->lockForUpdate()->firstOrFail();
             $settings = array_replace(WorkDay::defaultSettings(), $user->work_settings ?? []);
+            $settings['overtimeEnabled'] = $user->locale !== 'en-US';
             if (! $settings['enabled']) {
-                throw ValidationException::withMessages(['enabled' => 'Ative o acompanhamento da jornada nas configurações do perfil.']);
+                throw ValidationException::withMessages(['enabled' => __('Ative o acompanhamento da jornada nas configurações do perfil.')]);
             }
             $day = WorkDay::where('work_date', $data['date'])->lockForUpdate()->first();
             $this->checkVersion($day, (int) $data['entry_version']);
@@ -111,19 +121,19 @@ class WorkHoursController extends Controller
             $instant = CarbonImmutable::now()->utc();
             $today = $instant->setTimezone($timezone)->toDateString();
             if ($data['date'] !== $today && (! $day?->started_at || $day->finished_at || $day->started_at->lessThanOrEqualTo($instant->subDay()))) {
-                throw ValidationException::withMessages(['date' => 'Escolha a jornada de hoje para registrar o horário atual.']);
+                throw ValidationException::withMessages(['date' => __('Escolha a jornada de hoje para registrar o horário atual.')]);
             }
             $mapping = ['startedAt' => 'start', 'lunchOut' => 'pause', 'lunchIn' => 'resume', 'finishedAt' => 'finish'];
             $action = $data['action'] ?? $mapping[$data['step']];
             if (isset($data['step']) && $day?->{WorkDay::STEPS[$data['step']]} !== null) {
-                throw ValidationException::withMessages(['step' => 'Este horário já foi registrado. Edite-o nas configurações do perfil.']);
+                throw ValidationException::withMessages(['step' => __('Este horário já foi registrado. Edite-o nas configurações do perfil.')]);
             }
             $day ??= new WorkDay(['work_date' => $data['date'], 'timezone' => $timezone, 'regime' => $settings]);
             if ($day->finished_at) {
-                throw ValidationException::withMessages(['action' => 'Esta jornada já foi encerrada. Corrija os horários nas configurações do perfil.']);
+                throw ValidationException::withMessages(['action' => __('Esta jornada já foi encerrada. Corrija os horários nas configurações do perfil.')]);
             }
             if ($action !== 'start' && (! $day->started_at || $day->started_at->lessThanOrEqualTo($instant->subDay()))) {
-                throw ValidationException::withMessages(['action' => 'Inicie uma jornada de hoje antes de pausar ou finalizar.']);
+                throw ValidationException::withMessages(['action' => __('Inicie uma jornada de hoje antes de pausar ou finalizar.')]);
             }
             $additional = $day->additional_breaks ?? [];
             $last = array_key_last($additional);
@@ -131,25 +141,25 @@ class WorkHoursController extends Controller
             $additionalOpen = $last !== null && empty($additional[$last]['finished_at']);
             if ($action === 'start') {
                 if ($day->started_at) {
-                    throw ValidationException::withMessages(['action' => 'Sua jornada já foi iniciada.']);
+                    throw ValidationException::withMessages(['action' => __('Sua jornada já foi iniciada.')]);
                 }
                 $day->started_at = $instant;
                 $day->regime = $settings;
             } elseif ($action === 'pause') {
                 if ($primaryOpen || $additionalOpen) {
-                    throw ValidationException::withMessages(['action' => 'Sua jornada já está em pausa.']);
+                    throw ValidationException::withMessages(['action' => __('Sua jornada já está em pausa.')]);
                 }
                 if (! $day->lunch_out_at) {
                     $day->lunch_out_at = $instant;
                 } else {
                     if (count($additional) >= 30) {
-                        throw ValidationException::withMessages(['action' => 'O limite de pausas desta jornada foi atingido.']);
+                        throw ValidationException::withMessages(['action' => __('O limite de pausas desta jornada foi atingido.')]);
                     }
                     $additional[] = ['started_at' => $instant->toIso8601String(), 'finished_at' => null];
                 }
             } elseif ($action === 'resume') {
                 if (! $primaryOpen && ! $additionalOpen) {
-                    throw ValidationException::withMessages(['action' => 'Não há uma pausa em andamento para retomar.']);
+                    throw ValidationException::withMessages(['action' => __('Não há uma pausa em andamento para retomar.')]);
                 }
                 if ($primaryOpen) {
                     $day->lunch_in_at = $instant;
@@ -174,13 +184,13 @@ class WorkHoursController extends Controller
 
     private function checkVersion(?WorkDay $day, int $expected): void
     {
-        abort_if(($day?->version ?? 0) !== $expected, 409, 'Seus horários mudaram em outra aba. Atualize os dados antes de salvar.');
+        abort_if(($day?->version ?? 0) !== $expected, 409, __('Seus horários mudaram em outra aba. Atualize os dados antes de salvar.'));
     }
 
     private function normalizeEntries(array $entries, string $date, string $timezone, ?WorkDay $day = null, ?array $additionalBreaks = null): array
     {
         if ($date > now($timezone)->toDateString()) {
-            throw ValidationException::withMessages(['date' => 'Não é possível registrar uma jornada no futuro.']);
+            throw ValidationException::withMessages(['date' => __('Não é possível registrar uma jornada no futuro.')]);
         }
         $additionalBreaks ??= array_map(fn (array $pause): array => [
             'startedAt' => CarbonImmutable::parse($pause['started_at'])->setTimezone($timezone)->format('H:i'),
@@ -189,19 +199,19 @@ class WorkHoursController extends Controller
         $result = ['started_at' => null, 'lunch_out_at' => null, 'lunch_in_at' => null, 'finished_at' => null, 'additional_breaks' => []];
         if (empty($entries['startedAt'])) {
             if (array_filter($entries) || $additionalBreaks) {
-                throw ValidationException::withMessages(['entries.startedAt' => 'Preencha a entrada antes dos outros horários.']);
+                throw ValidationException::withMessages(['entries.startedAt' => __('Preencha a entrada antes dos outros horários.')]);
             }
 
             return $result;
         }
         if (! empty($entries['lunchIn']) && empty($entries['lunchOut'])) {
-            throw ValidationException::withMessages(['entries.lunchOut' => 'Informe o início da pausa antes do retorno.']);
+            throw ValidationException::withMessages(['entries.lunchOut' => __('Informe o início da pausa antes do retorno.')]);
         }
         if (! empty($entries['lunchOut']) && empty($entries['lunchIn']) && (! empty($entries['finishedAt']) || $additionalBreaks)) {
-            throw ValidationException::withMessages(['entries.lunchIn' => 'Informe o retorno da pausa antes dos próximos registros.']);
+            throw ValidationException::withMessages(['entries.lunchIn' => __('Informe o retorno da pausa antes dos próximos registros.')]);
         }
         if ($additionalBreaks && empty($entries['lunchIn'])) {
-            throw ValidationException::withMessages(['additional_breaks' => 'Complete a primeira pausa antes de adicionar outra.']);
+            throw ValidationException::withMessages(['additional_breaks' => __('Complete a primeira pausa antes de adicionar outra.')]);
         }
         $steps = [['column' => 'started_at', 'value' => $entries['startedAt'], 'original' => $day?->started_at]];
         foreach (['lunchOut' => 'lunch_out_at', 'lunchIn' => 'lunch_in_at'] as $key => $column) {
@@ -211,10 +221,10 @@ class WorkHoursController extends Controller
         }
         foreach ($additionalBreaks as $index => $pause) {
             if (empty($pause['startedAt'])) {
-                throw ValidationException::withMessages(['additional_breaks' => 'Informe o início de cada pausa adicional ou remova a pausa vazia.']);
+                throw ValidationException::withMessages(['additional_breaks' => __('Informe o início de cada pausa adicional ou remova a pausa vazia.')]);
             }
             if (empty($pause['finishedAt']) && ($index < count($additionalBreaks) - 1 || ! empty($entries['finishedAt']))) {
-                throw ValidationException::withMessages(['additional_breaks' => 'Complete a pausa em andamento antes dos próximos horários.']);
+                throw ValidationException::withMessages(['additional_breaks' => __('Complete a pausa em andamento antes dos próximos horários.')]);
             }
             $original = ($day?->additional_breaks ?? [])[$index] ?? [];
             $steps[] = ['column' => 'additional_start', 'value' => $pause['startedAt'], 'index' => $index, 'original' => isset($original['started_at']) ? CarbonImmutable::parse($original['started_at']) : null];
@@ -240,11 +250,11 @@ class WorkHoursController extends Controller
                 $calendarDate = $instant->toDateString();
             }
             if ($instant->format('Y-m-d H:i') !== $calendarDate.' '.$step['value'] || $previous && ($instant->lessThan($previous) || ! $preserved && $instant->equalTo($previous))) {
-                throw ValidationException::withMessages(['entries' => 'Confira a sequência dos horários e das pausas informados.']);
+                throw ValidationException::withMessages(['entries' => __('Confira a sequência dos horários e das pausas informados.')]);
             }
             $first ??= $instant;
             if ($first->diffInSeconds($instant) > 86400 || $instant->greaterThan(now())) {
-                throw ValidationException::withMessages(['entries' => 'Os horários devem caber em 24 horas e não podem estar no futuro.']);
+                throw ValidationException::withMessages(['entries' => __('Os horários devem caber em 24 horas e não podem estar no futuro.')]);
             }
             $utc = $instant->utc();
             if ($step['column'] === 'additional_start') {
@@ -263,9 +273,10 @@ class WorkHoursController extends Controller
     private function responseData(User $user, string $fallbackTimezone, ?string $selectedDate = null): JsonResponse
     {
         $settings = array_replace(WorkDay::defaultSettings($fallbackTimezone), $user->work_settings ?? []);
+        $settings['overtimeEnabled'] = $user->locale !== 'en-US';
         $today = now($settings['timezone'])->toDateString();
         if ($selectedDate !== null && $selectedDate > $today) {
-            throw ValidationException::withMessages(['date' => 'Não é possível registrar uma jornada no futuro.']);
+            throw ValidationException::withMessages(['date' => __('Não é possível registrar uma jornada no futuro.')]);
         }
         $todayDay = WorkDay::where('work_date', $today)->first();
         $active = $todayDay?->started_at ? $todayDay : WorkDay::where('work_date', '>=', now($settings['timezone'])->subDay()->toDateString())
@@ -276,10 +287,10 @@ class WorkHoursController extends Controller
         $selected = $selectedDate === null ? $active : WorkDay::where('work_date', $selectedDate)->first();
         $selected ??= new WorkDay(['work_date' => $selectedDate ?? $today, 'timezone' => $settings['timezone'], 'regime' => $settings, 'version' => 0]);
         $active ??= new WorkDay(['work_date' => $today, 'timezone' => $settings['timezone'], 'regime' => $settings, 'version' => 0]);
-        $records = WorkDay::withOvertimeData(collect([$selected, $active])->unique(fn (WorkDay $day): string => $day->work_date->toDateString()), $settings, CarbonImmutable::now());
+        $records = WorkDay::withOvertimeData(collect([$selected, $active])->unique(fn (WorkDay $day): string => $day->work_date->toDateString()), $settings, CarbonImmutable::now(), $user->hasPro());
 
         return response()->json([
-            'settings' => $settings,
+            'settings' => $user->visibleWorkSettings($settings),
             'settings_version' => $user->work_settings_version,
             'today' => $today,
             'day' => $records[$selected->work_date->toDateString()],

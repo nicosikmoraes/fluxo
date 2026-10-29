@@ -8,6 +8,7 @@ use App\Models\Roadmap;
 use App\Models\RoadmapEdge;
 use App\Models\RoadmapNode;
 use App\Models\Task;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -20,7 +21,14 @@ class RoadmapController extends Controller
         $d = $r->validate(['title' => ['required', 'string', 'max:160'], 'card_type' => ['sometimes', 'required', Rule::in(['task', 'activity'])]]);
         $d['card_type'] ??= 'activity';
 
-        return response()->json(Roadmap::create($d + ['project_id' => $project->id])->load('nodes', 'edges'), 201);
+        $roadmap = DB::transaction(function () use ($r, $project, $d): Roadmap {
+            $user = User::whereKey($r->user()->id)->lockForUpdate()->firstOrFail();
+            abort_if(! $user->hasPro() && Roadmap::where('project_id', $project->id)->count() >= config('billing.free_roadmaps_per_project'), 403, __('O plano gratuito permite um roadmap por projeto. Conheça o Fluxo Pro para criar mais.'));
+
+            return Roadmap::create($d + ['project_id' => $project->id])->load('nodes', 'edges');
+        });
+
+        return response()->json($roadmap, 201);
     }
 
     public function update(Request $r, Roadmap $roadmap)
@@ -53,7 +61,7 @@ class RoadmapController extends Controller
 
         return DB::transaction(function () use ($roadmap, $data): JsonResponse {
             $current = Roadmap::whereKey($roadmap->id)->lockForUpdate()->firstOrFail();
-            abort_unless($current->portals_version === (int) $data['version'], 409, 'Os portais mudaram em outra aba. Atualize a página antes de salvar.');
+            abort_unless($current->portals_version === (int) $data['version'], 409, __('Os portais mudaram em outra aba. Atualize a página antes de salvar.'));
             $portals = array_map(fn (array $portal): array => [
                 'id' => $portal['id'],
                 'label' => $portal['label'] ?? '',
@@ -109,7 +117,7 @@ class RoadmapController extends Controller
 
     public function createConnectedTask(Request $r, Roadmap $roadmap)
     {
-        abort_unless($roadmap->card_type === 'task', 422, 'Este roadmap organiza atividades.');
+        abort_unless($roadmap->card_type === 'task', 422, __('Este roadmap organiza atividades.'));
         $d = $r->validate($this->coordinates() + [
             'title' => ['required', 'string', 'max:200'],
             'source_node_id' => ['required', 'integer', Rule::exists('roadmap_nodes', 'id')->where('roadmap_id', $roadmap->id)],
@@ -144,12 +152,12 @@ class RoadmapController extends Controller
         return DB::transaction(function () use ($roadmap, $data): JsonResponse {
             $nodes = $roadmap->nodes()->lockForUpdate()->get()->keyBy('id');
             foreach ($data['nodes'] as $position) {
-                abort_unless($nodes->has($position['id']), 422, 'Um dos cards não pertence a este roadmap.');
+                abort_unless($nodes->has($position['id']), 422, __('Um dos cards não pertence a este roadmap.'));
             }
-            abort_unless($nodes->count() === count($data['nodes']), 409, 'O mapa mudou. Atualize a página e gere outra prévia.');
+            abort_unless($nodes->count() === count($data['nodes']), 409, __('O mapa mudou. Atualize a página e gere outra prévia.'));
             foreach ($data['nodes'] as $position) {
                 $node = $nodes->get($position['id']);
-                abort_unless((float) $node->x === (float) $position['previous_x'] && (float) $node->y === (float) $position['previous_y'], 409, 'O mapa mudou. Atualize a página e gere outra prévia.');
+                abort_unless((float) $node->x === (float) $position['previous_x'] && (float) $node->y === (float) $position['previous_y'], 409, __('O mapa mudou. Atualize a página e gere outra prévia.'));
             }
             foreach ($data['nodes'] as $position) {
                 $nodes->get($position['id'])->update(['x' => $position['x'], 'y' => $position['y']]);

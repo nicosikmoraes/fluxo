@@ -1,4 +1,5 @@
 <script setup>
+import { t } from "../../state/locale";
 import { computed, ref, watch } from "vue";
 import { Grid2X2, Undo2, Check, X } from "@lucide/vue";
 import { request, notify, state } from "../../state/workspace";
@@ -19,7 +20,7 @@ watch(signature, (value) => {
   if (preview.value && !saving.value && value !== layoutSignature(preview.value.before.nodes, preview.value.before.portals)) {
     preview.value = null;
     emit("preview", null);
-    notify("O mapa mudou. Gere outra prévia do alinhamento.", "error");
+    notify(t("O mapa mudou. Gere outra prévia do alinhamento."), "error");
   }
 });
 function start() {
@@ -27,7 +28,7 @@ function start() {
   try {
     const before = snapshot(), after = alignRoadmap(props.nodes, props.portals);
     if (layoutSignature(before.nodes, before.portals) === layoutSignature(after.nodes, after.portals)) {
-      notify("Os cards já estão alinhados.");
+      notify(t("Os cards já estão alinhados."));
       return;
     }
     preview.value = { roadmapId: props.roadmapId, before, after };
@@ -46,7 +47,7 @@ async function save(isUndo = false) {
   if (!operation || saving.value || state.saving || isUndo && !canUndo.value) return;
   const expected = isUndo ? operation.after : operation.before, target = isUndo ? operation.before : operation.after;
   if (signature.value !== layoutSignature(expected.nodes, expected.portals)) {
-    notify("O mapa mudou. Gere outra prévia.", "error");
+    notify(t("O mapa mudou. Gere outra prévia."), "error");
     return;
   }
   const original = new Map(expected.nodes.map((node) => [node.id, node]));
@@ -55,7 +56,7 @@ async function save(isUndo = false) {
   if (portalChanges) {
     storedPortals = readPortals(operation.roadmapId);
     if (layoutSignature([], storedPortals) !== layoutSignature([], expected.portals)) {
-      notify("Os portais mudaram. Atualize a página antes de alinhar.", "error");
+      notify(t("Os portais mudaram. Atualize a página antes de alinhar."), "error");
       return;
     }
   }
@@ -75,9 +76,9 @@ async function save(isUndo = false) {
       undo.value = isUndo ? null : { ...operation, after: { nodes: result.nodes, portals: portalPositions } };
     }
     emit("positions-saved", { roadmapId: operation.roadmapId, nodes: result.nodes, portals: portalPositions });
-    notify(portalsSaved ? isUndo ? "Alinhamento desfeito." : "Cards alinhados." : "Cards alinhados, mas as posições dos portais não foram salvas. Você pode desfazer.", portalsSaved ? "success" : "error");
+    notify(portalsSaved ? isUndo ? t("Alinhamento desfeito.") : t("Cards alinhados.") : t("Cards alinhados, mas as posições dos portais não foram salvas. Você pode desfazer."), portalsSaved ? "success" : "error");
   } catch (error) {
-    notify(error.message || "Não foi possível salvar o alinhamento. Tente novamente.", "error");
+    notify(error.message || t("Não foi possível salvar o alinhamento. Tente novamente."), "error");
   } finally {
     saving.value = false;
     state.saving--;
@@ -85,8 +86,8 @@ async function save(isUndo = false) {
 }
 </script>
 <template>
- <div class="roadmap-alignment-controls" aria-label="Alinhamento do roadmap">
-  <template v-if="preview"><span class="alignment-summary" role="status">Prévia · {{ preview.after.rows }} {{ preview.after.rows===1?'linha':'linhas' }} · espaços preservados</span><button class="text-btn" :disabled="saving" @click="save(false)"><Check :size="14"/>{{ saving?'Salvando...':'Aplicar' }}</button><button class="text-btn" :disabled="saving" @click="cancel"><X :size="14"/>Cancelar</button></template>
-  <template v-else><button class="text-btn" :disabled="!nodes.length||!!state.saving" @click="start"><Grid2X2 :size="14"/>Alinhar cards</button><button v-if="undo" class="text-btn" :disabled="!canUndo||!!state.saving" @click="save(true)"><Undo2 :size="14"/>Desfazer alinhamento</button></template>
+ <div class="roadmap-alignment-controls" :aria-label="t('Alinhamento do roadmap')">
+  <template v-if="preview"><span class="alignment-summary" role="status">{{ t("Prévia ·") }} {{ preview.after.rows }} {{ preview.after.rows===1?'linha':'linhas' }} {{ t("· espaços preservados") }}</span><button class="text-btn" :disabled="saving" @click="save(false)"><Check :size="14"/>{{ saving?t('Salvando...'):'Aplicar' }}</button><button class="text-btn" :disabled="saving" @click="cancel"><X :size="14"/>{{ t("Cancelar") }}</button></template>
+  <template v-else><button class="text-btn" :disabled="!nodes.length||!!state.saving" @click="start"><Grid2X2 :size="14"/>{{ t("Alinhar cards") }}</button><button v-if="undo" class="text-btn" :disabled="!canUndo||!!state.saving" @click="save(true)"><Undo2 :size="14"/>{{ t("Desfazer alinhamento") }}</button></template>
  </div>
 </template>

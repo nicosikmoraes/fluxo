@@ -1,3 +1,5 @@
+import { currentLocale, t } from "../../state/locale";
+
 export function dateKey(date) {
   return `${String(date.getFullYear()).padStart(4, "0")}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
@@ -20,5 +22,5 @@ export function monthDays(month) {
   });
 }
 export function deliveryLabel(key) {
-  return key ? new Intl.DateTimeFormat("pt-BR", { day: "numeric", month: "long", year: "numeric" }).format(parseDay(key)) : "Sem data de entrega";
+  return key ? new Intl.DateTimeFormat(currentLocale.value, { day: "numeric", month: "long", year: "numeric" }).format(parseDay(key)) : t("Sem data de entrega");
 }

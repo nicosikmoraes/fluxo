@@ -42,4 +42,17 @@ class UserFactory extends Factory
             'email_verified_at' => null,
         ]);
     }
+
+    public function pro(): static
+    {
+        return $this->afterCreating(function (User $user): void {
+            $user->subscriptions()->create([
+                'type' => 'default',
+                'stripe_id' => 'sub_'.Str::random(24),
+                'stripe_status' => 'active',
+                'stripe_price' => config('billing.pro_price_id'),
+                'quantity' => 1,
+            ]);
+        });
+    }
 }

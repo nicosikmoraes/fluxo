@@ -1,4 +1,5 @@
 <script setup>
+import { t } from "../../state/locale";
 import { reactive, ref } from "vue";
 import { ImagePlus, X } from "@lucide/vue";
 import Modal from "../../shared/Modal.vue";
@@ -14,22 +15,22 @@ async function pick(event) {
 }
 async function save() {
   if (state.saving) return;
-  const result = await mutate(props.task ? "/tasks/" + props.task.id : "/tasks", props.task ? "PATCH" : "POST", { ...form, title: form.title.trim(), project_id: form.project_id || null, due_date: form.due_date || null }, props.task ? "Task atualizada." : "Sua task está pronta. Adicione os primeiros passos.");
+  const result = await mutate(props.task ? "/tasks/" + props.task.id : "/tasks", props.task ? "PATCH" : "POST", { ...form, title: form.title.trim(), project_id: form.project_id || null, due_date: form.due_date || null }, props.task ? t("Task atualizada.") : t("Sua task está pronta. Adicione os primeiros passos."));
   if (result) emit("saved", result);
 }
 </script>
 <template>
- <Modal :title="task ? 'Editar task' : 'Nova task'" @close="emit('close')">
+ <Modal :title="task ? t('Editar task') : t('Nova task')" @close="emit('close')">
   <form class="form-stack" @submit.prevent="save">
-   <label>Título <span class="required">*</span><input v-model="form.title" autofocus required maxlength="200" placeholder="O que você quer desenvolver?"></label>
-   <label>Descrição <span class="optional">opcional</span><textarea v-model="form.description" maxlength="20000" rows="4" placeholder="Contexto, ideias e o resultado que você espera..."></textarea></label>
-   <label>Projeto <span class="optional">opcional</span><select v-model="form.project_id"><option :value="null">Sem projeto</option><option v-for="p in state.projects" :key="p.id" :value="p.id">{{ p.title }}</option></select></label>
-   <label>Data de entrega <span class="optional">opcional</span><input v-model="form.due_date" type="date" min="0001-01-01" max="9999-12-31" aria-label="Data de entrega"></label>
-   <label>Capa <span class="optional">opcional · até 8 MB</span></label>
-   <div v-if="form.cover_path" class="upload-preview"><img :src="form.cover_path" alt="Capa da task"><button type="button" class="icon-btn" aria-label="Remover capa" @click="form.cover_path = null"><X :size="16" /></button></div>
-   <button v-else type="button" class="upload-zone" :disabled="!!state.saving" @click="input.click()"><ImagePlus :size="21" /> Adicionar uma imagem</button>
+   <label>{{ t("Título") }} <span class="required">*</span><input v-model="form.title" autofocus required maxlength="200" :placeholder="t('O que você quer desenvolver?')"></label>
+   <label>{{ t("Descrição") }} <span class="optional">{{ t("opcional") }}</span><textarea v-model="form.description" maxlength="20000" rows="4" :placeholder="t('Contexto, ideias e o resultado que você espera...')"></textarea></label>
+   <label>{{ t("Projeto") }} <span class="optional">{{ t("opcional") }}</span><select v-model="form.project_id"><option :value="null">{{ t("Sem projeto") }}</option><option v-for="p in state.projects" :key="p.id" :value="p.id">{{ p.title }}</option></select></label>
+   <label>{{ t("Data de entrega") }} <span class="optional">{{ t("opcional") }}</span><input v-model="form.due_date" type="date" min="0001-01-01" max="9999-12-31" :aria-label="t('Data de entrega')"></label>
+   <label>{{ t("Capa") }} <span class="optional">{{ t("opcional · até 8 MB") }}</span></label>
+   <div v-if="form.cover_path" class="upload-preview"><img :src="form.cover_path" :alt="t('Capa da task')"><button type="button" class="icon-btn" :aria-label="t('Remover capa')" @click="form.cover_path = null"><X :size="16" /></button></div>
+   <button v-else type="button" class="upload-zone" :disabled="!!state.saving" @click="input.click()"><ImagePlus :size="21" /> {{ t("Adicionar uma imagem") }}</button>
    <input ref="input" hidden type="file" accept="image/png,image/jpeg,image/webp,image/gif" @change="pick">
-   <footer class="modal-actions"><button type="button" class="btn secondary" @click="emit('close')">Cancelar</button><button class="btn primary" :disabled="!!state.saving">{{ state.saving ? 'Salvando...' : task ? 'Salvar alterações' : 'Criar task' }}</button></footer>
+   <footer class="modal-actions"><button type="button" class="btn secondary" @click="emit('close')">{{ t("Cancelar") }}</button><button class="btn primary" :disabled="!!state.saving">{{ state.saving ? t('Salvando...') : task ? t('Salvar alterações') : t('Criar task') }}</button></footer>
   </form>
  </Modal>
 </template>

@@ -1,3 +1,4 @@
+import { t } from "../../state/locale";
 const WIDTH = 272, HEIGHT = 184, GAP = 64, LIMIT = 1e6;
 const median = (values) => {
   const sorted = [...values].sort((a, b) => a - b);
@@ -17,7 +18,7 @@ function clusters(items, axis, tolerance, separateRows = false) {
 export function alignRoadmap(nodes, portals = []) {
   if (!nodes.length) return { nodes: [], portals: portals.map(({ id, x, y }) => ({ id, x, y })), rows: 0, columns: 0 };
   const items = nodes.map(({ id, x, y }) => ({ id, x: Number(x), y: Number(y) }));
-  if (items.some((item) => !Number.isFinite(item.x) || !Number.isFinite(item.y))) throw new Error("Há posições inválidas no mapa.");
+  if (items.some((item) => !Number.isFinite(item.x) || !Number.isFinite(item.y))) throw new Error(t("Há posições inválidas no mapa."));
   const rows = clusters(items, "y", 64);
   const rowY = rows.map((row) => position(median(row.map((item) => item.y))));
   for (let index = 0; index < rows.length; index++) {
@@ -54,7 +55,7 @@ export function alignRoadmap(nodes, portals = []) {
     while (collides() && x <= LIMIT) x += WIDTH + GAP;
     portalPositions.push({ id: portal.id, x, y });
   }
-  if ([...aligned, ...portalPositions].some((item) => item.x < 0 || item.y < 0 || item.x > LIMIT || item.y > LIMIT)) throw new Error("O alinhamento ultrapassa o limite do quadro. Mova os cards para mais perto da origem.");
+  if ([...aligned, ...portalPositions].some((item) => item.x < 0 || item.y < 0 || item.x > LIMIT || item.y > LIMIT)) throw new Error(t("O alinhamento ultrapassa o limite do quadro. Mova os cards para mais perto da origem."));
   return { nodes: aligned, portals: portalPositions, rows: rows.length, columns: columns.length };
 }
 export function layoutSignature(nodes, portals = []) {

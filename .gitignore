@@ -5,6 +5,7 @@ ui/dist/
 **/auth.json
 **/.env.*
 !**/.env.example
+!app/.env.staging.example
 startup.log
 ui/node_modules/
 tests/.runtime/

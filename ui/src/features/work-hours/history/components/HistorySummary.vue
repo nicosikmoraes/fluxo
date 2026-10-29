@@ -1,15 +1,22 @@
 <script setup>
+import { t } from "../../../../state/locale";
 import { Clock3, TrendingUp, Wallet, CircleCheck } from "@lucide/vue";
 import { duration, money } from "../history";
-defineProps({ summary: { type: Object, required: true } });
+defineProps({ canCalculatePay: { type: Boolean, default: true }, summary: { type: Object, required: true }, englishMode: { type: Boolean, default: false } });
 </script>
 
 <template>
-  <section class="history-summary" aria-label="Resumo do período">
-    <article class="summary-card"><span class="summary-icon blue"><Clock3 :size="18" /></span><p>Horas trabalhadas</p><strong>{{ duration(summary.worked) }}</strong><small>{{ summary.days }} dias com registro <span>· inclui parciais</span></small></article>
-    <article class="summary-card"><span class="summary-icon violet"><TrendingUp :size="18" /></span><p>Horas extras</p><strong>{{ duration(summary.overtime) }}</strong><small>Distribuídas em {{ summary.extraDays }} dias</small></article>
-    <article class="summary-card"><span class="summary-icon mint"><Wallet :size="18" /></span><p>Valor estimado das extras</p><strong>{{ money(summary.estimated) }}</strong><small>{{ summary.unvaluedDays ? `${summary.unvaluedDays} dia(s) com extras sem salário registrado` : 'Valor bruto, conforme a jornada de cada dia' }}</small></article>
-    <article class="summary-card received"><span class="summary-icon mint"><CircleCheck :size="18" /></span><p>Recebido pelas extras</p><strong>{{ money(summary.received) }}</strong><small>Recebimentos dos dias deste período</small></article>
+  <section class="history-summary" :class="{ english: englishMode }" :aria-label="t('Resumo do período')">
+    <template v-if="englishMode">
+      <article class="summary-card"><span class="summary-icon blue"><Clock3 :size="18" /></span><p>Hours worked</p><strong>{{ duration(summary.worked) }}</strong><small>{{ summary.days }} days tracked <span>· includes partial days</span></small></article>
+      <article v-if="canCalculatePay" class="summary-card received"><span class="summary-icon mint"><Wallet :size="18" /></span><p>Estimated pay</p><strong>{{ money(summary.hourlyEarnings) }}</strong><small>Based on your hourly rate and recorded time</small><small v-if="summary.unvaluedHourlyDays">{{ t('{count} registro(s) sem valor por hora.', { count: summary.unvaluedHourlyDays }) }}</small></article>
+    </template>
+    <template v-else>
+    <article class="summary-card"><span class="summary-icon blue"><Clock3 :size="18" /></span><p>{{ t("Horas trabalhadas") }}</p><strong>{{ duration(summary.worked) }}</strong><small>{{ summary.days }} {{ t("dias com registro") }} <span>{{ t("· inclui parciais") }}</span></small></article>
+    <article class="summary-card"><span class="summary-icon violet"><TrendingUp :size="18" /></span><p>{{ t("Horas extras") }}</p><strong>{{ duration(summary.overtime) }}</strong><small>{{ t("Distribuídas em") }} {{ summary.extraDays }} {{ t("dias") }}</small></article>
+    <article v-if="canCalculatePay" class="summary-card"><span class="summary-icon mint"><Wallet :size="18" /></span><p>{{ t("Valor estimado das extras") }}</p><strong>{{ money(summary.estimated) }}</strong><small>{{ summary.unvaluedDays ? t('{count} dia(s) com extras sem salário registrado', { count: summary.unvaluedDays }) : t('Valor bruto, conforme a jornada de cada dia') }}</small></article>
+    <article v-if="canCalculatePay" class="summary-card received"><span class="summary-icon mint"><CircleCheck :size="18" /></span><p>{{ t("Recebido pelas extras") }}</p><strong>{{ money(summary.received) }}</strong><small>{{ t("Recebimentos dos dias deste período") }}</small></article>
+    </template>
   </section>
 </template>
 
@@ -19,6 +26,7 @@ defineProps({ summary: { type: Object, required: true } });
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
 }
+.history-summary.english { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 720px; }
 .summary-card {
   position: relative;
   background: var(--theme-panel, #fff);

@@ -1,4 +1,5 @@
 <script setup>
+import { t } from "./state/locale";
 import { onMounted, ref, watch } from "vue";
 import { LoaderCircle, RefreshCw } from "@lucide/vue";
 import App from "./App.vue";
@@ -23,8 +24,8 @@ onMounted(connect);
  <DesktopRoot v-if="isDesktopWidget" :connect="connect" />
  <div v-else-if="auth.loading || auth.error" class="auth-loading" role="status">
   <LoaderCircle v-if="auth.loading" :size="28" class="spin" />
-  <template v-else><p>{{ auth.error }}</p><button class="btn primary" @click="connect"><RefreshCw :size="16" /> Tentar novamente</button></template>
-  <p v-if="auth.loading">Abrindo seu espaço...</p>
+  <template v-else><p>{{ auth.error }}</p><button class="btn primary" @click="connect"><RefreshCw :size="16" /> {{ t("Tentar novamente") }}</button></template>
+  <p v-if="auth.loading">{{ t("Abrindo seu espaço...") }}</p>
  </div>
  <AuthScreen v-else-if="!auth.user || resetToken" :reset-token="resetToken" :reset-email="resetEmail" @reset-finished="resetToken=''" />
  <App v-else :key="auth.user.id" />

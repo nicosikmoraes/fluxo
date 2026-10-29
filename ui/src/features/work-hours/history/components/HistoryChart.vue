@@ -1,9 +1,11 @@
 <script setup>
+import { currentLocale, t } from "../../../../state/locale";
 import { computed, ref, watch } from "vue";
 import { BarChart3 } from "@lucide/vue";
 import { dateLabel, duration } from "../history";
 const props = defineProps({ records: { type: Array, required: true } });
 const emit = defineEmits(["select"]);
+const englishMode = computed(() => currentLocale.value === "en-US");
 const grouping = ref("day");
 const hovered = ref(null);
 const dailyTarget = computed(() => {
@@ -21,7 +23,7 @@ const buckets = computed(() => {
     const stamp = new Date(`${record.date}T12:00:00Z`);
     stamp.setUTCDate(stamp.getUTCDate() - (stamp.getUTCDay() + 6) % 7);
     const key = stamp.toISOString().slice(0, 10);
-    const week = weeks.get(key) || { date: key, label: dateLabel(key), description: `Semana de ${dateLabel(key)}`, worked: 0, overtime: 0, count: 0 };
+    const week = weeks.get(key) || { date: key, label: dateLabel(key), description: t("Semana de {date}", { date: dateLabel(key) }), worked: 0, overtime: 0, count: 0 };
     week.worked += record.worked;
     week.overtime += record.overtime;
     week.count++;
@@ -35,17 +37,17 @@ const ticks = computed(() => [0, 1, 2, 3].map((index) => ({ value: index * ceili
 
 <template>
   <section class="chart-card">
-    <header><div><span class="chart-eyebrow">SEU TEMPO EM PERSPECTIVA</span><h2>Como os seus dias se distribuem.</h2></div><div class="chart-toggle" aria-label="Agrupamento do gráfico"><button :class="{ active: grouping === 'day' }" :aria-pressed="grouping === 'day'" @click="grouping = 'day'">Por dia</button><button :class="{ active: grouping === 'week' }" :aria-pressed="grouping === 'week'" @click="grouping = 'week'">Por semana</button></div></header>
-    <div class="chart-legend"><span><i></i>Jornada regular</span><span><i class="extra"></i>Horas extras</span><span v-if="grouping === 'day' && dailyTarget != null" class="chart-target-legend"><i class="target"></i>Meta de {{ duration(dailyTarget) }}</span></div>
-    <div v-if="!records.length" class="chart-empty"><BarChart3 :size="30" /><p>Seu próximo registro começa este gráfico.</p></div>
+    <header><div><span class="chart-eyebrow">{{ t("SEU TEMPO EM PERSPECTIVA") }}</span><h2>{{ t("Como os seus dias se distribuem.") }}</h2></div><div class="chart-toggle" :aria-label="t('Agrupamento do gráfico')"><button :class="{ active: grouping === 'day' }" :aria-pressed="grouping === 'day'" @click="grouping = 'day'">{{ t("Por dia") }}</button><button :class="{ active: grouping === 'week' }" :aria-pressed="grouping === 'week'" @click="grouping = 'week'">{{ t("Por semana") }}</button></div></header>
+    <div class="chart-legend"><span><i></i>{{ englishMode ? t("Horas trabalhadas") : t("Jornada regular") }}</span><span v-if="!englishMode"><i class="extra"></i>{{ t("Horas extras") }}</span><span v-if="grouping === 'day' && dailyTarget != null" class="chart-target-legend"><i class="target"></i>{{ t("Meta de") }} {{ duration(dailyTarget) }}</span></div>
+    <div v-if="!records.length" class="chart-empty"><BarChart3 :size="30" /><p>{{ t("Seu próximo registro começa este gráfico.") }}</p></div>
     <template v-else>
-      <div class="chart-tooltip" aria-live="polite"><template v-if="hovered"><b>{{ hovered.description }}</b><span>{{ duration(hovered.worked) }} trabalhadas</span><span v-if="hovered.overtime">+{{ duration(hovered.overtime) }} extras</span></template><span v-else>Passe sobre as barras para explorar{{ grouping === 'day' ? ' ou clique para ver o dia' : '' }}.</span></div>
+      <div class="chart-tooltip" aria-live="polite"><template v-if="hovered"><b>{{ hovered.description }}</b><span>{{ duration(hovered.worked) }} {{ t("trabalhadas") }}</span><span v-if="hovered.overtime">+{{ duration(hovered.overtime) }} {{ t("extras") }}</span></template><span v-else>{{ t("Passe sobre as barras para explorar") }}{{ grouping === 'day' ? t(' ou clique para ver o dia') : '' }}.</span></div>
       <div class="chart-scroll"><div class="chart-plot" :style="{ minWidth: Math.max(350, buckets.length * 30) + 'px' }">
         <div v-for="tick in ticks" :key="tick.percent" class="chart-gridline" :style="{ bottom: tick.percent + '%' }"><span>{{ Math.round(tick.value / 60) }}h</span></div>
         <div v-if="grouping === 'day' && dailyTarget != null" class="chart-goal" :style="{ bottom: dailyTarget / ceiling * 100 + '%' }"><span>{{ duration(dailyTarget) }}</span></div>
-        <div class="chart-bars"><div v-for="bucket in buckets" :key="bucket.date" class="chart-column"><button class="chart-bar" :class="{ 'chart-bar-hover': hovered?.date === bucket.date }" :style="{ height: bucket.worked / ceiling * 100 + '%' }" :aria-label="`${bucket.description}: ${duration(bucket.worked)} trabalhadas, ${duration(bucket.overtime)} extras${grouping === 'day' ? '. Abrir detalhes' : ''}`" @mouseenter="hovered = bucket" @mouseleave="hovered = null" @focus="hovered = bucket" @blur="hovered = null" @click="grouping === 'day' && emit('select', bucket.date)"><span class="chart-extra-bar" :style="{ height: bucket.worked ? bucket.overtime / bucket.worked * 100 + '%' : 0 }"></span></button><span class="chart-day-label">{{ bucket.label }}</span></div></div>
+        <div class="chart-bars"><div v-for="bucket in buckets" :key="bucket.date" class="chart-column"><button class="chart-bar" :class="{ 'chart-bar-hover': hovered?.date === bucket.date }" :style="{ height: bucket.worked / ceiling * 100 + '%' }" :aria-label="bucket.description + ': ' + t('{duration} trabalhadas', { duration: duration(bucket.worked) }) + (englishMode ? '' : ', ' + duration(bucket.overtime) + ' ' + t('extras')) + (grouping === 'day' ? t('. Abrir detalhes') : '')" @mouseenter="hovered = bucket" @mouseleave="hovered = null" @focus="hovered = bucket" @blur="hovered = null" @click="grouping === 'day' && emit('select', bucket.date)"><span class="chart-extra-bar" :style="{ height: bucket.worked ? bucket.overtime / bucket.worked * 100 + '%' : 0 }"></span></button><span class="chart-day-label">{{ bucket.label }}</span></div></div>
       </div></div>
-      <footer><span><BarChart3 :size="14" />{{ records.length }} dias registrados no período</span><span>As horas do dia em andamento são parciais.</span></footer>
+      <footer><span><BarChart3 :size="14" />{{ records.length }} {{ t("dias registrados no período") }}</span><span>{{ t("As horas do dia em andamento são parciais.") }}</span></footer>
     </template>
   </section>
 </template>

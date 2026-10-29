@@ -16,6 +16,7 @@ import {
 import {
   calculateRecordedWorkDay
 } from "./workHours";
+import { currentLocale, t } from "../../state/locale";
 
 export function useWorkHours() {
   const owner = auth.user.id;
@@ -34,7 +35,7 @@ export function useWorkHours() {
   let interval;
   let lastRefresh = 0;
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-  const day = computed(() => calculateRecordedWorkDay(state.data?.settings || {}, state.data?.active_day, now.value));
+  const day = computed(() => calculateRecordedWorkDay({ ...state.data?.settings, overtimeEnabled: currentLocale.value !== "en-US" }, state.data?.active_day, now.value));
 
   try {
     expanded.value = localStorage.getItem(storageKey) === "expanded";
@@ -125,10 +126,10 @@ export function useWorkHours() {
         entry_version: entry.version
       });
       if (result) notify({
-        start: "Entrada registrada.",
-        pause: "Pausa iniciada.",
-        resume: "Retorno registrado.",
-        finish: "Saída registrada. Jornada encerrada."
+        start: t("Entrada registrada."),
+        pause: t("Pausa iniciada."),
+        resume: t("Retorno registrado."),
+        finish: t("Saída registrada. Jornada encerrada.")
       } [action]);
     } catch (error) {
       if (alive && auth.user?.id === owner) {

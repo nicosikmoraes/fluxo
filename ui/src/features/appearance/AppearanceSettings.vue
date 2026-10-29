@@ -1,4 +1,5 @@
 <script setup>
+import { t } from "../../state/locale";
 import { Check, Moon, Palette, Sun } from "@lucide/vue";
 import { setTheme, theme } from "./theme";
 const options = [
@@ -9,16 +10,16 @@ const options = [
 
 <template>
   <section class="appearance-settings" aria-labelledby="appearance-heading">
-    <header><span class="appearance-heading-icon"><Palette :size="18" /></span><div><h2 id="appearance-heading">Aparência</h2><p>Escolha como você quer ver o seu espaço.</p></div></header>
-    <div class="appearance-options" role="radiogroup" aria-label="Tema do Fluxo">
+    <header><span class="appearance-heading-icon"><Palette :size="18" /></span><div><h2 id="appearance-heading">{{ t("Aparência") }}</h2><p>{{ t("Escolha como você quer ver o seu espaço.") }}</p></div></header>
+    <div class="appearance-options" role="radiogroup" :aria-label="t('Tema do Fluxo')">
       <label v-for="option in options" :key="option.id" class="appearance-option" :class="{ 'is-selected': theme === option.id }">
         <input type="radio" name="fluxo-theme" :value="option.id" :checked="theme === option.id" @change="setTheme(option.id)">
         <span class="appearance-preview" :class="option.id" aria-hidden="true"><i class="preview-sidebar"></i><span class="preview-main"><i></i><span><b></b><b></b><b></b></span></span></span>
-        <span class="appearance-option-label"><component :is="option.icon" :size="15" /><strong>{{ option.name }}</strong><Check v-if="theme === option.id" :size="15" class="appearance-selected" /></span>
-        <small>{{ option.description }}</small>
+        <span class="appearance-option-label"><component :is="option.icon" :size="15" /><strong>{{ t(option.name) }}</strong><Check v-if="theme === option.id" :size="15" class="appearance-selected" /></span>
+        <small>{{ t(option.description) }}</small>
       </label>
     </div>
-    <p class="appearance-note" role="status">{{ theme === 'graphite' ? 'Tema Grafite ativado.' : 'Tema claro ativado.' }} Sua escolha é salva automaticamente neste navegador.</p>
+    <p class="appearance-note" role="status">{{ theme === 'graphite' ? t('Tema Grafite ativado.') : t('Tema claro ativado.') }} {{ t("Sua escolha é salva automaticamente neste navegador.") }}</p>
   </section>
 </template>
 

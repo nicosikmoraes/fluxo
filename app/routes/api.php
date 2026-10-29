@@ -1,7 +1,9 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BillingController;
 use App\Http\Controllers\DailyListController as D;
+use App\Http\Controllers\ProfilePreferenceController;
 use App\Http\Controllers\RoadmapController as R;
 use App\Http\Controllers\WhiteboardController;
 use App\Http\Controllers\WorkHistoryController;
@@ -16,7 +18,11 @@ Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword'])-
 Route::post('/auth/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:password-recovery');
 
 Route::middleware(['auth', 'auth.session'])->group(function (): void {
+    Route::get('/billing', [BillingController::class, 'index']);
+    Route::post('/billing/checkout', [BillingController::class, 'checkout'])->middleware('throttle:10,1');
+    Route::post('/billing/portal', [BillingController::class, 'portal'])->middleware('throttle:10,1');
     Route::post('/auth/logout', [AuthController::class, 'logout']);
+    Route::put('/profile/preferences', [ProfilePreferenceController::class, 'update']);
     Route::get('/whiteboards', [WhiteboardController::class, 'index']);
     Route::post('/whiteboards', [WhiteboardController::class, 'storeBoard']);
     Route::patch('/whiteboards/{whiteboard}', [WhiteboardController::class, 'renameBoard']);

@@ -50,7 +50,7 @@ class WorkDay extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function workHoursData(array $overtimeContext = []): array
+    public function workHoursData(array $overtimeContext = [], bool $includePay = true): array
     {
         $entries = [];
         $instants = [];
@@ -66,7 +66,7 @@ class WorkDay extends Model
             'entries' => $entries,
             'instants' => $instants,
             'version' => $this->version,
-            'regime' => $this->regime ?? self::defaultSettings($this->timezone),
+            'regime' => $includePay ? ($this->regime ?? self::defaultSettings($this->timezone)) : array_replace($this->regime ?? self::defaultSettings($this->timezone), ['monthlySalary' => null, 'hourlyRate' => null]),
             'breaks' => array_map(fn (array $pause): array => [
                 'startedAt' => $pause['started_at']->toIso8601String(),
                 'finishedAt' => $pause['finished_at']?->toIso8601String(),
@@ -75,8 +75,8 @@ class WorkDay extends Model
             ], $this->breakIntervals()),
             'overtime_context' => $overtimeContext,
             'receipt' => [
-                'amount' => $this->overtime_receipt === null ? null : $this->overtime_receipt['amount_cents'] / 100,
-                'received_on' => $this->overtime_receipt['received_on'] ?? null,
+                'amount' => ! $includePay || $this->overtime_receipt === null ? null : $this->overtime_receipt['amount_cents'] / 100,
+                'received_on' => $includePay ? ($this->overtime_receipt['received_on'] ?? null) : null,
                 'version' => $this->receipt_version ?? 0,
             ],
         ];
@@ -130,6 +130,9 @@ class WorkDay extends Model
     public function overtimeSeconds(CarbonImmutable $now): float
     {
         $regime = $this->regime ?? self::defaultSettings($this->timezone);
+        if (($regime['overtimeEnabled'] ?? true) === false) {
+            return 0;
+        }
         $weekend = in_array($this->work_date->dayOfWeek, [0, 6], true);
         $target = $weekend ? 0 : $regime['weeklyHours'] * 3600 / $regime['daysPerWeek'];
 
@@ -151,7 +154,7 @@ class WorkDay extends Model
         return ['start' => $start->toDateString(), 'end' => $end->toDateString()];
     }
 
-    public static function withOvertimeData(Collection $days, array $settings, CarbonImmutable $now): array
+    public static function withOvertimeData(Collection $days, array $settings, CarbonImmutable $now, bool $includePay = true): array
     {
         if ($days->isEmpty()) {
             return [];
@@ -178,7 +181,7 @@ class WorkDay extends Model
             $totals[$cycle['start']] = ($totals[$cycle['start']] ?? 0) + $day->overtimeSeconds($now);
         }
 
-        return $days->mapWithKeys(function (self $day) use ($contexts, $cycleDays, $closingDay, $now): array {
+        return $days->mapWithKeys(function (self $day) use ($contexts, $cycleDays, $closingDay, $now, $includePay): array {
             $date = $day->work_date->toDateString();
             $cycle = self::payrollCycle($date, $closingDay);
             $context = $contexts[$date] ?? [
@@ -189,7 +192,7 @@ class WorkDay extends Model
                 'sunday_premium' => 100,
             ];
 
-            return [$date => $day->workHoursData($context)];
+            return [$date => $day->workHoursData($context, $includePay)];
         })->all();
     }
 
@@ -200,8 +203,10 @@ class WorkDay extends Model
             'weeklyHours' => 44,
             'daysPerWeek' => 5,
             'monthlySalary' => null,
+            'hourlyRate' => null,
             'monthlyHours' => 220,
             'overtimePremium' => 50,
+            'overtimeEnabled' => true,
             'cycleClosingDay' => 31,
             'timezone' => $timezone,
         ];

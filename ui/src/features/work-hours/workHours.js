@@ -1,10 +1,14 @@
+import { formatCurrency, t } from "../../state/locale";
+
 export const defaultWorkSettings = {
   enabled: false,
   weeklyHours: 44,
   daysPerWeek: 5,
   monthlySalary: "",
+  hourlyRate: "",
   monthlyHours: 220,
   overtimePremium: 50,
+  overtimeEnabled: true,
   cycleClosingDay: 31,
 };
 
@@ -51,7 +55,7 @@ export function formatWorkTime(minutes) {
 }
 
 export function formatWorkDuration(seconds) {
-  if (seconds > 0 && seconds < 60) return "menos de 1min";
+  if (seconds > 0 && seconds < 60) return t("menos de 1min");
   const totalMinutes = Math.round(Math.max(0, seconds) / 60);
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
@@ -60,38 +64,42 @@ export function formatWorkDuration(seconds) {
 }
 
 export function formatWorkMoney(value) {
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL"
-  }).format(value);
+  return formatCurrency(value);
 }
 
 export function validateWorkSettings(settings) {
   const errors = {};
+  if (settings.overtimeEnabled === false) {
+    const rate = settings.hourlyRate;
+    if (rate !== "" && rate != null && (!Number.isFinite(Number(rate)) || Number(rate) < 0.01 || Number(rate) > 999999999 || !/^\d+(?:\.\d{1,2})?$/.test(String(rate)))) {
+      errors.hourlyRate = t("Informe um valor por hora válido, com até duas casas decimais, ou deixe em branco.");
+    }
+    return errors;
+  }
   const weeklyHours = Number(settings.weeklyHours);
   const days = Number(settings.daysPerWeek);
   if (!Number.isFinite(weeklyHours) || weeklyHours <= 0 || weeklyHours > 168) {
-    errors.weeklyHours = "Informe uma jornada semanal maior que zero e de até 168 horas.";
+    errors.weeklyHours = t("Informe uma jornada semanal maior que zero e de até 168 horas.");
   }
   if (!Number.isInteger(days) || days < 1 || days > 7) {
-    errors.daysPerWeek = "Escolha de 1 a 7 dias por semana.";
+    errors.daysPerWeek = t("Escolha de 1 a 7 dias por semana.");
   }
   if (!errors.weeklyHours && !errors.daysPerWeek && weeklyHours / days > 24) {
-    errors.weeklyHours = "A jornada diária não pode ultrapassar 24 horas.";
+    errors.weeklyHours = t("A jornada diária não pode ultrapassar 24 horas.");
   }
   if (settings.monthlySalary !== "" && settings.monthlySalary != null) {
     if (!Number.isFinite(Number(settings.monthlySalary)) || Number(settings.monthlySalary) <= 0) {
-      errors.monthlySalary = "Informe um salário maior que zero ou deixe em branco.";
+      errors.monthlySalary = t("Informe um salário maior que zero ou deixe em branco.");
     }
     if (!Number.isFinite(Number(settings.monthlyHours)) || Number(settings.monthlyHours) <= 0) {
-      errors.monthlyHours = "Informe a base de horas mensais do seu contrato.";
+      errors.monthlyHours = t("Informe a base de horas mensais do seu contrato.");
     }
     if (!Number.isFinite(Number(settings.overtimePremium)) || Number(settings.overtimePremium) < 0) {
-      errors.overtimePremium = "Informe um adicional igual ou maior que zero.";
+      errors.overtimePremium = t("Informe um adicional igual ou maior que zero.");
     }
   }
   if (!Number.isInteger(Number(settings.cycleClosingDay ?? 31)) || Number(settings.cycleClosingDay ?? 31) < 1 || Number(
-      settings.cycleClosingDay ?? 31) > 31) errors.cycleClosingDay = "Escolha um dia de fechamento entre 1 e 31.";
+      settings.cycleClosingDay ?? 31) > 31) errors.cycleClosingDay = t("Escolha um dia de fechamento entre 1 e 31.");
   return errors;
 }
 
@@ -115,6 +123,15 @@ export function payrollCycle(date, closingDay = 31, offset = 0) {
 }
 
 export function overtimeValue(settings, date, seconds, context = {}) {
+  if (settings.overtimeEnabled === false) return {
+    hourlyRate: Number(settings.hourlyRate) > 0 ? Number(settings.hourlyRate) : null,
+    overtimeRate: null,
+    overtimeMoney: null,
+    overtimeBreakdown: [],
+    currentPremium: 0,
+    cycleOvertimeSeconds: 0,
+    cycle: null
+  };
   const previous = Number(context.previous_seconds || 0);
   const threshold = Number(context.threshold_seconds ?? 72000);
   const sunday = new Date(date + "T12:00:00Z").getUTCDay() === 0;
@@ -158,13 +175,13 @@ export function getWorkTimeline(entries, {
   const timeline = {};
   const pauses = [];
   if (!entries.startedAt && Object.values(entries).some(Boolean)) return {
-    error: "Preencha a entrada antes dos demais horários."
+    error: t("Preencha a entrada antes dos demais horários.")
   };
   if (entries.lunchIn && !entries.lunchOut) return {
-    error: "Informe o início da pausa."
+    error: t("Informe o início da pausa.")
   };
   if (additionalBreaks.length && !entries.lunchIn) return {
-    error: "Complete a primeira pausa antes de adicionar outra."
+    error: t("Complete a primeira pausa antes de adicionar outra.")
   };
   const steps = [["startedAt", entries.startedAt]];
   const breaks = entries.lunchOut ? [{
@@ -173,10 +190,10 @@ export function getWorkTimeline(entries, {
   }, ...additionalBreaks] : [];
   for (const [index, pause] of breaks.entries()) {
     if (!pause.startedAt) return {
-      error: "Informe o início de cada pausa."
+      error: t("Informe o início de cada pausa.")
     };
     if (!pause.finishedAt && (entries.finishedAt || index < breaks.length - 1)) return {
-      error: "Informe o retorno da pausa antes de continuar."
+      error: t("Informe o retorno da pausa antes de continuar.")
     };
     steps.push(["pauseStart" + index, pause.startedAt], ["pauseEnd" + index, pause.finishedAt]);
   }
@@ -187,7 +204,7 @@ export function getWorkTimeline(entries, {
     if (!value) continue;
     const minutes = parseWorkTime(value);
     if (minutes === null) return {
-      error: "Confira os horários informados."
+      error: t("Confira os horários informados.")
     };
     let absolute = minutes + offset;
     if (previous !== null && absolute < previous) {
@@ -195,13 +212,13 @@ export function getWorkTimeline(entries, {
       absolute += 1440;
     }
     if (!allowEqual && previous === absolute) return {
-      error: "Cada registro precisa acontecer depois do anterior."
+      error: t("Cada registro precisa acontecer depois do anterior.")
     };
     timeline[key] = absolute;
     previous = absolute;
   }
   if (previous !== null && previous - timeline.startedAt > 1440) return {
-    error: "A jornada deve caber em até 24 horas."
+    error: t("A jornada deve caber em até 24 horas.")
   };
   breaks.forEach((pause, index) => pauses.push({
     start: timeline["pauseStart" + index],
@@ -247,18 +264,19 @@ function measureWork(started, finished, pauses, current, live = true) {
 
 function workSummary(settings, date, started, finished, pauses, current, context, live = true) {
   const weekend = isWorkWeekend(date);
-  const targetSeconds = weekend ? 0 : Number(settings.weeklyHours) * 3600 / Number(settings.daysPerWeek);
+  const targetSeconds = settings.overtimeEnabled === false ? null : weekend ? 0 : Number(settings.weeklyHours) * 3600 / Number(settings.daysPerWeek);
   const measured = measureWork(started, finished, pauses, current, live);
-  const overtimeSeconds = Math.max(0, measured.workedSeconds - targetSeconds);
+  const overtimeSeconds = targetSeconds === null ? 0 : Math.max(0, measured.workedSeconds - targetSeconds);
   return {
     valid: true,
     error: "",
     settingsErrors: {},
     ...measured,
+    hourlyEarnings: settings.overtimeEnabled === false && Number(settings.hourlyRate) > 0 ? measured.workedSeconds / 3600 * Number(settings.hourlyRate) : null,
     targetSeconds,
     overtimeSeconds,
     weekend,
-    remainingSeconds: Math.max(0, targetSeconds - measured.workedSeconds),
+    remainingSeconds: targetSeconds === null ? 0 : Math.max(0, targetSeconds - measured.workedSeconds),
     progress: targetSeconds ? Math.min(100, measured.workedSeconds / targetSeconds * 100) : started === null ? 0 : 100,
     returned: started !== null && !measured.paused,
     started: started !== null,
@@ -277,7 +295,7 @@ export function calculateWorkDay(settings, entries, nowMinutes, options = {}) {
   } = getWorkTimeline(entries, options);
   if (Object.keys(settingsErrors).length || error) return {
     valid: false,
-    error: error || "Confira as configurações da jornada.",
+    error: error || t("Confira as configurações da jornada."),
     settingsErrors
   };
   const date = options.date || workDateInTimezone(new Date(), settings.timezone || "UTC");
@@ -288,7 +306,7 @@ export function calculateWorkDay(settings, entries, nowMinutes, options = {}) {
       start: p.start * 60,
       end: p.end === null ? null : p.end * 60
     })), current * 60, options.context);
-  const departureMinutes = day.started && !day.paused ? timeline.startedAt + (day.targetSeconds + day.lunchSeconds) /
+  const departureMinutes = day.started && !day.paused && day.targetSeconds !== null ? timeline.startedAt + (day.targetSeconds + day.lunchSeconds) /
     60 : null;
   return {
     ...day,
@@ -326,7 +344,8 @@ export function calculateRecordedWorkDay(settings, record, now = new Date()) {
     ...defaultWorkSettings,
     ...settings,
     ...record.regime,
-    enabled: settings.enabled
+    enabled: settings.enabled,
+    overtimeEnabled: settings.overtimeEnabled === false ? false : record.regime?.overtimeEnabled ?? settings.overtimeEnabled ?? true
   };
   const instant = (value) => value ? Date.parse(value) / 1000 : null;
   const started = instant(record.instants?.startedAt);
@@ -342,7 +361,7 @@ export function calculateRecordedWorkDay(settings, record, now = new Date()) {
   const current = now.getTime() / 1000;
   const stale = started !== null && finished === null && current - started >= 86400;
   const day = workSummary(regime, record.date, started, finished, pauses, current, record.overtime_context, !stale);
-  const expected = started === null || day.paused ? null : new Date((started + day.targetSeconds + day.lunchSeconds) *
+  const expected = started === null || day.paused || day.targetSeconds === null ? null : new Date((started + day.targetSeconds + day.lunchSeconds) *
     1000);
   const departureNextDay = expected !== null && workDateInTimezone(expected, record.timezone) > record.date;
   const departureMinutes = expected === null ? null : parseWorkTime(workTimeInTimezone(expected, record.timezone)) + (
