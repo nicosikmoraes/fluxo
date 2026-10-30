@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Storage;
 
 $screen = fn () => response(file_get_contents(public_path('ui/index.html')), 200, ['Content-Type' => 'text/html; charset=UTF-8', 'Cache-Control' => 'no-store, private']);
 Route::get('/', $screen)->name('login');
+Route::get('/admin', fn () => response(file_get_contents(public_path('ui/admin.html')), 200, ['Content-Type' => 'text/html; charset=UTF-8', 'Cache-Control' => 'no-store, private']))->middleware(['auth', 'auth.session', 'can:access-admin'])->name('admin');
 Route::get('/reset-password/{token}', $screen)->name('password.reset');
 Route::prefix('api')->group(base_path('routes/api.php'));
 Route::post('/stripe/webhook', BillingWebhookController::class)->name('cashier.webhook');

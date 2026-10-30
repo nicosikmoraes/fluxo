@@ -1,6 +1,6 @@
 import { reactive, watch } from "vue";
 import { currentLocale, setLocale, t } from "../../state/locale";
-export const auth = reactive({ user: null, csrfToken: "", loading: true, error: "", message: "" });
+export const auth = reactive({ user: null, site: null, csrfToken: "", loading: true, error: "", message: "" });
 let restoring;
 async function fetchFromServer(url, options) {
   try {
@@ -18,6 +18,7 @@ export async function restoreSession() {
       if (!response.ok) throw new Error(t("Não foi possível conectar ao Fluxo. Tente novamente."));
       const data = await response.json();
       auth.user = data.user;
+      auth.site = data.site || null;
       auth.csrfToken = data.csrf_token;
     } catch (error) {
       auth.error = error.message;
@@ -54,11 +55,13 @@ export async function apiRequest(url, method = "GET", data) {
     throw error;
   }
   if (body?.csrf_token) auth.csrfToken = body.csrf_token;
+  if (body?.site) auth.site = body.site;
   return response.status === 204 ? true : body;
 }
 export async function signOut() {
   const data = await apiRequest("/auth/logout", "POST");
   auth.user = data.user;
+      auth.site = data.site || null;
   auth.csrfToken = data.csrf_token;
   auth.message = "";
 }

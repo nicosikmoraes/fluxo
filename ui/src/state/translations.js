@@ -1,4 +1,13 @@
 export default {
+"Administração": "Administration",
+  "Voltamos em breve.": "We will be back soon.",
+  "O Fluxo está em manutenção. Tente novamente em breve.": "Fluxo is undergoing maintenance. Please try again soon.",
+  "Seu acesso Pro foi concedido pela administração.": "Your Pro access was granted by an administrator.",
+  "Válido até": "Valid until",
+  "Sem vencimento.": "No expiration date.",
+  "Novos cadastros estão temporariamente desativados.": "New registrations are temporarily disabled.",
+  "Esta conta está desativada. Entre em contato com o suporte.": "This account is disabled. Please contact support.",
+
   "Preencha este campo.": "Fill in this field.",
   "Use no máximo {count} caracteres.": "Use no more than {count} characters.",
   "Informe uma data válida.": "Enter a valid date.",

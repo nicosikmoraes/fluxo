@@ -164,7 +164,7 @@ function save() {
             <div class="work-field"><label for="work-monthly">{{ t("Base de horas mensais") }}</label><div class="work-input-unit"><input id="work-monthly" type="number" step="any" :value="settings.monthlyHours" :aria-invalid="Boolean(errors.monthlyHours)" @input="updateSetting('monthlyHours', $event.target.value)"><span>{{ t("horas") }}</span></div><p v-if="errors.monthlyHours" class="work-field-error">{{ errors.monthlyHours }}</p></div>
             <div class="work-field"><label for="work-premium">{{ t("Adicional da hora extra") }}</label><div class="work-input-unit"><input id="work-premium" type="number" step="any" :value="settings.overtimePremium" :aria-invalid="Boolean(errors.overtimePremium)" @input="updateSetting('overtimePremium', $event.target.value)"><span>%</span></div><p v-if="errors.overtimePremium" class="work-field-error">{{ errors.overtimePremium }}</p></div>
           </div>
-          <div v-if="salaryProvided && day.valid" class="work-rate-summary"><TrendingUp :size="15" /><span>{{ t("Hora normal") }} <b>{{ formatWorkMoney(day.hourlyRate) }}</b></span><span class="work-rate-arrow">→</span><span>{{ t("Hora extra") }} <b>{{ formatWorkMoney(day.overtimeRate) }}</b></span></div>
+          <div v-if="salaryProvided && day.valid" class="work-rate-summary"><TrendingUp :size="15" /><span>{{ t("Hora normal") }} <b>{{ formatWorkMoney(day.hourlyRate) }}</b></span><span class="work-rate-arrow">–</span><span>{{ t("Hora extra") }} <b>{{ formatWorkMoney(day.overtimeRate) }}</b></span></div>
           <p v-if="salaryProvided" class="work-helper rate-helper"><Info :size="13" /> {{ t("Ajuste a base mensal e o adicional conforme seu contrato. O valor é uma estimativa bruta, sem descontos.") }}</p>
           <p v-else class="work-helper"><Clock3 :size="13" /> {{ t("Sem salário? Você continua acompanhando todas as horas extras.") }}</p>
         </fieldset>
@@ -233,7 +233,7 @@ function save() {
         <section class="work-widget-guide">
           <span class="work-guide-art"><Clock3 :size="24" /><span class="work-guide-dot"></span><span class="work-guide-line"></span><span class="work-guide-line short"></span></span>
           <div><h3>{{ t("Pertinho, sem interromper.") }}</h3><p>{{ t("Um widget discreto acompanha você em todas as telas. Recolha quando quiser e abra com um clique.") }}</p></div>
-          <button v-if="day.valid && day.showWidget" type="button" @click="emit('open-widget')">{{ t("Ver minha jornada") }} <ArrowRight :size="14" /></button>
+          <button v-if="day.valid && day.showWidget" type="button" @click="emit('open-widget')">{{ t("Ver minha jornada") }} </button>
         </section>
       </div>
     </div>

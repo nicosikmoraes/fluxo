@@ -1,5 +1,5 @@
 <script setup>
-import { ArrowUpRight, Clock3, Sparkles } from "@lucide/vue";
+import { Clock3, Sparkles } from "@lucide/vue";
 import { t } from "../../state/locale";
 defineEmits(["upgrade"]);
 </script>
@@ -8,7 +8,7 @@ defineEmits(["upgrade"]);
   <section class="work-tracking-upgrade">
     <span class="work-upgrade-icon" aria-hidden="true"><Clock3 :size="25" /></span>
     <div class="work-upgrade-copy"><span class="work-pro-label"><Sparkles :size="12" /> FLUXO PRO</span><h2>{{ t("Acompanhar minha jornada") }}</h2><p>{{ t("Registre entrada e saída, acompanhe suas pausas e consulte seu histórico com o Fluxo Pro.") }}</p></div>
-    <button type="button" class="btn primary" @click="$emit('upgrade')">{{ t("Conhecer Fluxo Pro") }} <ArrowUpRight :size="15" /></button>
+    <button type="button" class="btn primary" @click="$emit('upgrade')">{{ t("Conhecer Fluxo Pro") }} </button>
   </section>
 </template>
 

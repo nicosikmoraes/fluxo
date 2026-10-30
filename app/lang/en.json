@@ -115,5 +115,13 @@
   "O preço da assinatura precisa ser configurado. Tente novamente em breve.": "The subscription price needs to be configured. Please try again soon.",
   "Já existe uma solicitação de assinatura em andamento. Aguarde um instante.": "A subscription request is already in progress. Please wait a moment.",
   "Não foi possível abrir a cobrança. Tente novamente.": "Billing could not be opened. Please try again.",
-  "Você ainda não tem uma conta de cobrança. Conheça o Fluxo Pro.": "You do not have a billing account yet. Explore Fluxo Pro."
+  "Você ainda não tem uma conta de cobrança. Conheça o Fluxo Pro.": "You do not have a billing account yet. Explore Fluxo Pro.",
+  "Administração": "Administration",
+  "Voltamos em breve.": "We will be back soon.",
+  "O Fluxo está em manutenção. Tente novamente em breve.": "Fluxo is undergoing maintenance. Please try again soon.",
+  "Seu acesso Pro foi concedido pela administração.": "Your Pro access was granted by an administrator.",
+  "Válido até": "Valid until",
+  "Sem vencimento.": "No expiration date.",
+  "Novos cadastros estão temporariamente desativados.": "New registrations are temporarily disabled.",
+  "Esta conta está desativada. Entre em contato com o suporte.": "This account is disabled. Please contact support."
 }

@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref } from "vue";
-import { ArrowUpRight, Check, ChevronUp, Clock3, Coffee, GripVertical, LogOut, Play, Pause, Settings2, TrendingUp, X } from "@lucide/vue";
+import { Check, ChevronUp, Clock3, Coffee, GripVertical, LogOut, Play, Pause, Settings2, TrendingUp, X } from "@lucide/vue";
 import { formatWorkDuration, formatWorkMoney, formatWorkTime } from "./workHours";
 import { useDraggableWidget } from "./useDraggableWidget";
 import { currentLocale, t } from "../../state/locale";
@@ -122,7 +122,7 @@ function collapseFromHeader(event) {
             <button class="work-widget-finish" :disabled="busy" @click="emit('finish')"><LogOut :size="14" /> {{ busy ? t('Registrando...') : t('Finalizar') }}</button>
           </template>
           <button v-else class="work-widget-finish finished" @click="emit('settings')"><Check :size="14" /> {{ t("Ver registros de hoje") }}</button>
-          <button class="work-widget-minimize" :aria-label="t('Recolher widget da jornada')" @click="emit('update:expanded', false)">{{ t("Recolher") }} <ArrowUpRight :size="13" /></button>
+          <button class="work-widget-minimize" :aria-label="t('Recolher widget da jornada')" @click="emit('update:expanded', false)">{{ t("Recolher") }} </button>
         </footer>
         <slot name="tools" />
       </section>

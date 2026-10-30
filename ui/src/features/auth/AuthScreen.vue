@@ -93,7 +93,7 @@ async function submit() {
    <section class="auth-card" :aria-label="title">
     <div class="auth-card-symbol"><LockKeyhole :size="20" /></div>
     <h2>{{ title }}</h2><p class="auth-description">{{ description }}</p>
-    <div v-if="mode==='login' || mode==='register'" class="auth-tabs" :aria-label="t('Acesso ao Fluxo')"><button type="button" :class="{selected:mode==='login'}" :aria-pressed="mode==='login'" :disabled="busy" @click="changeMode('login')">{{ t("Entrar") }}</button><button type="button" :class="{selected:mode==='register'}" :aria-pressed="mode==='register'" :disabled="busy" @click="changeMode('register')">{{ t("Criar conta") }}</button></div>
+    <p v-if="mode==='login' && (auth.site?.registration_enabled===false || auth.site?.maintenance)" class="auth-policy-note" role="status">{{t(auth.site?.maintenance?"O Fluxo está em manutenção. Tente novamente em breve.":"Novos cadastros estão temporariamente desativados.")}}</p><div v-if="mode==='login' || mode==='register'" class="auth-tabs" :aria-label="t('Acesso ao Fluxo')"><button type="button" :class="{selected:mode==='login'}" :aria-pressed="mode==='login'" :disabled="busy" @click="changeMode('login')">{{ t("Entrar") }}</button><button v-if="auth.site?.registration_enabled !== false && !auth.site?.maintenance" type="button" :class="{selected:mode==='register'}" :aria-pressed="mode==='register'" :disabled="busy" @click="changeMode('register')">{{ t("Criar conta") }}</button></div>
     <div v-if="auth.message" class="auth-feedback info" role="status">{{ auth.message }}</div>
     <div v-if="error" class="auth-feedback error" role="alert">{{ error }}</div>
     <div v-if="success" class="auth-feedback success" role="status"><CheckCircle2 :size="16" /><span>{{ success }}</span></div>
@@ -107,7 +107,7 @@ async function submit() {
       <button type="submit" class="auth-submit"><LoaderCircle v-if="busy" :size="17" class="spin" /><span>{{ busy?t('Só um instante...'):action }}</span></button>
      </fieldset>
     </form>
-    <p v-if="mode==='login' || mode==='register'" class="auth-switch">{{ mode==='login'?t('Primeira vez por aqui?'):t('Já tem uma conta?') }} <button type="button" :disabled="busy" @click="changeMode(mode==='login'?'register':'login')">{{ mode==='login'?t('Crie sua conta'):t('Entrar') }}</button></p>
+    <p v-if="(mode==='login' || mode==='register') && auth.site?.registration_enabled !== false && !auth.site?.maintenance" class="auth-switch">{{ mode==='login'?t('Primeira vez por aqui?'):t('Já tem uma conta?') }} <button type="button" :disabled="busy" @click="changeMode(mode==='login'?'register':'login')">{{ mode==='login'?t('Crie sua conta'):t('Entrar') }}</button></p>
     <button v-else class="auth-back" type="button" :disabled="busy" @click="changeMode('login')">{{ t("Voltar para entrar") }}</button>
     <div class="auth-trust"><ShieldCheck :size="14" /><span>{{ t("Um espaço só seu, para cada ideia.") }}</span></div>
    </section>
@@ -725,4 +725,5 @@ async function submit() {
     padding-bottom: 16px;
   }
 }
+.auth-policy-note { padding: 11px 13px; border: 1px solid var(--theme-line, #e9edf4); border-radius: 8px; background: var(--theme-surface-muted, #f7f8fc); color: var(--theme-text-secondary, #68758d); font-size: 12px; line-height: 1.7; }
 </style>
