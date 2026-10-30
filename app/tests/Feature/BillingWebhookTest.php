@@ -108,6 +108,20 @@ class BillingWebhookTest extends TestCase
         $this->assertFalse($owner->fresh()->hasPro());
     }
 
+    public function test_a_confirmed_subscription_in_brl_grants_the_same_pro_features(): void
+    {
+        $owner = User::factory()->create(['stripe_id' => 'cus_owner', 'locale' => 'en-US']);
+        $remote = $this->subscription(extra: ['currency' => 'brl']);
+        $remote['items']['data'][0]['price'] += ['currency' => 'brl', 'unit_amount' => 1299];
+        $this->stripe($remote);
+
+        $this->sendEvent(type: 'customer.subscription.created')->assertOk();
+
+        $this->actingAs($owner)->getJson('/api/billing')->assertOk()->assertJsonPath('plan', 'pro')
+            ->assertJsonPath('entitlements.pay_calculation', true)->assertJsonPath('entitlements.projects', null);
+        $this->assertDatabaseHas('subscriptions', ['user_id' => $owner->id, 'stripe_price' => 'price_fluxo_test', 'stripe_status' => 'active']);
+    }
+
     public function test_delayed_deletion_event_cannot_revoke_a_subscription_that_is_active_again(): void
     {
         $owner = User::factory()->create(['stripe_id' => 'cus_owner']);

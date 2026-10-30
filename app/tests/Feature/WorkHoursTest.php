@@ -82,7 +82,7 @@ class WorkHoursTest extends TestCase
 
     public static function anonymousEndpoints(): array
     {
-        return [['GET', '/api/profile/work-hours'], ['PUT', '/api/profile/work-hours'], ['POST', '/api/profile/work-hours/records']];
+        return [['GET', '/api/profile/work-hours'], ['PUT', '/api/profile/work-hours'], ['POST', '/api/profile/work-hours/records'], ['GET', '/api/profile/work-hours/history'], ['PUT', '/api/profile/work-hours/receipts']];
     }
 
     #[DataProvider('anonymousEndpoints')]
@@ -144,6 +144,40 @@ class WorkHoursTest extends TestCase
             ->assertJsonPath('day.entries.finishedAt', '18:30')->assertJsonPath('day.version', 2);
         $this->assertDatabaseHas('work_days', ['user_id' => $user->id, 'finished_at' => '2026-10-16 21:30:45']);
         $this->postJson('/api/profile/work-hours/records', ['date' => '2026-10-16', 'step' => 'finishedAt', 'entry_version' => 2])->assertUnprocessable();
+    }
+
+    public function test_a_pro_account_can_start_and_finish_work_without_any_break(): void
+    {
+        $settings = [...WorkDay::defaultSettings('UTC'), 'enabled' => true, 'hourlyRate' => 20];
+        $this->actingAs(User::factory()->pro()->create(['locale' => 'en-US', 'work_settings' => $settings]));
+        $this->travelTo(CarbonImmutable::parse('2026-10-16T09:00:00Z'));
+
+        $this->postJson('/api/profile/work-hours/records', ['action' => 'start', 'date' => '2026-10-16', 'entry_version' => 0])
+            ->assertOk()->assertJsonCount(0, 'day.breaks')->assertJsonPath('day.entries.startedAt', '09:00');
+        $this->travelTo(CarbonImmutable::parse('2026-10-16T17:00:00Z'));
+        $this->postJson('/api/profile/work-hours/records', ['action' => 'finish', 'date' => '2026-10-16', 'entry_version' => 1])
+            ->assertOk()->assertJsonCount(0, 'day.breaks')->assertJsonPath('day.entries.finishedAt', '17:00');
+
+        $this->assertDatabaseHas('work_days', ['started_at' => '2026-10-16 09:00:00', 'finished_at' => '2026-10-16 17:00:00', 'lunch_out_at' => null, 'lunch_in_at' => null]);
+    }
+
+    public function test_multiple_optional_breaks_are_recorded_and_finishing_closes_the_open_break(): void
+    {
+        $settings = [...WorkDay::defaultSettings('UTC'), 'enabled' => true];
+        $this->actingAs(User::factory()->pro()->create(['work_settings' => $settings]));
+        foreach ([['09:00', 'start'], ['11:00', 'pause'], ['11:15', 'resume'], ['14:00', 'pause']] as $version => [$time, $action]) {
+            $this->travelTo(CarbonImmutable::parse('2026-10-16T'.$time.':00Z'));
+            $this->postJson('/api/profile/work-hours/records', ['action' => $action, 'date' => '2026-10-16', 'entry_version' => $version])->assertOk();
+        }
+        $this->travelTo(CarbonImmutable::parse('2026-10-16T14:10:00Z'));
+
+        $this->postJson('/api/profile/work-hours/records', ['action' => 'finish', 'date' => '2026-10-16', 'entry_version' => 4])
+            ->assertOk()->assertJsonCount(2, 'day.breaks')
+            ->assertJsonPath('day.breaks.0.startTime', '11:00')->assertJsonPath('day.breaks.0.endTime', '11:15')
+            ->assertJsonPath('day.breaks.1.startTime', '14:00')->assertJsonPath('day.breaks.1.endTime', '14:10')
+            ->assertJsonPath('day.entries.finishedAt', '14:10');
+        $this->assertSame(1, count(WorkDay::first()->additional_breaks));
+        $this->assertDatabaseCount('work_days', 1);
     }
 
     public function test_recording_is_rejected_when_tracking_is_disabled(): void

@@ -1,4 +1,5 @@
 <script setup>
+import { vValidate } from "../../shared/validation";
 import { t } from "../../state/locale";
 import { reactive, ref } from "vue";
 import { ImagePlus, X } from "@lucide/vue";
@@ -21,11 +22,11 @@ async function save() {
 </script>
 <template>
  <Modal :title="task ? t('Editar task') : t('Nova task')" @close="emit('close')">
-  <form class="form-stack" @submit.prevent="save">
-   <label>{{ t("Título") }} <span class="required">*</span><input v-model="form.title" autofocus required maxlength="200" :placeholder="t('O que você quer desenvolver?')"></label>
-   <label>{{ t("Descrição") }} <span class="optional">{{ t("opcional") }}</span><textarea v-model="form.description" maxlength="20000" rows="4" :placeholder="t('Contexto, ideias e o resultado que você espera...')"></textarea></label>
+  <form v-validate novalidate class="form-stack" @submit.prevent="save">
+   <label>{{ t("Título") }} <span class="required">*</span><input v-model="form.title" autofocus data-validate-required aria-required="true" data-validate-maxlength="200" :placeholder="t('O que você quer desenvolver?')"></label>
+   <label>{{ t("Descrição") }} <span class="optional">{{ t("opcional") }}</span><textarea v-model="form.description" data-validate-maxlength="20000" rows="4" :placeholder="t('Contexto, ideias e o resultado que você espera...')"></textarea></label>
    <label>{{ t("Projeto") }} <span class="optional">{{ t("opcional") }}</span><select v-model="form.project_id"><option :value="null">{{ t("Sem projeto") }}</option><option v-for="p in state.projects" :key="p.id" :value="p.id">{{ p.title }}</option></select></label>
-   <label>{{ t("Data de entrega") }} <span class="optional">{{ t("opcional") }}</span><input v-model="form.due_date" type="date" min="0001-01-01" max="9999-12-31" :aria-label="t('Data de entrega')"></label>
+   <label>{{ t("Data de entrega") }} <span class="optional">{{ t("opcional") }}</span><input v-model="form.due_date" type="date" data-validate-min="0001-01-01" data-validate-max="9999-12-31" :aria-label="t('Data de entrega')"></label>
    <label>{{ t("Capa") }} <span class="optional">{{ t("opcional · até 8 MB") }}</span></label>
    <div v-if="form.cover_path" class="upload-preview"><img :src="form.cover_path" :alt="t('Capa da task')"><button type="button" class="icon-btn" :aria-label="t('Remover capa')" @click="form.cover_path = null"><X :size="16" /></button></div>
    <button v-else type="button" class="upload-zone" :disabled="!!state.saving" @click="input.click()"><ImagePlus :size="21" /> {{ t("Adicionar uma imagem") }}</button>

@@ -1,6 +1,6 @@
 <script setup>
 import { computed, defineAsyncComponent, onMounted, ref, watch } from "vue";
-import { Layers3, LayoutDashboard, FolderOpen, Plus, Search, ChevronRight, ArrowUpRight, Check, CheckCircle2, Circle, Clock3, LockKeyhole, MessageSquare, ListTodo, GripVertical, Pencil, Trash2, MoreHorizontal, Sparkles, X, PanelLeftClose, PanelLeftOpen, RefreshCw, Image, ArrowRight, Monitor, LoaderCircle, CalendarDays, LogOut } from "@lucide/vue";
+import { Layers3, LayoutDashboard, FolderOpen, Plus, Search, ChevronRight, ArrowUpRight, Check, CheckCircle2, Circle, Clock3, LockKeyhole, MessageSquare, ListTodo, GripVertical, Pencil, Trash2, MoreHorizontal, Sparkles, X, PanelLeftClose, PanelLeftOpen, RefreshCw, Image, ArrowRight, LoaderCircle, CalendarDays, LogOut } from "@lucide/vue";
 import { state, load, mutate, label, notify } from "./state/workspace";
 import { auth, signOut } from "./features/auth/auth";
 import { vSortable } from "./shared/sortable";
@@ -23,11 +23,13 @@ import { BarChart3, Settings2 } from "@lucide/vue";
 import ProfileSettings from "./features/work-hours/ProfileSettings.vue";
 import { isDesktop, desktopCall } from "./features/desktop/desktopBridge";
 import WorkHoursWidget from "./features/work-hours/WorkHoursWidget.vue";
+import WorkTrackingUpgrade from "./features/work-hours/WorkTrackingUpgrade.vue";
 import { useWorkHours } from "./features/work-hours/useWorkHours";
 import WorkHistory from "./features/work-hours/history/WorkHistory.vue";
 const workHours = useWorkHours();
 const { day: workDay, expanded: workWidgetExpanded } = workHours;
 function showWorkWidget() {
+  if (!workHours.canTrack.value) return changeView("billing");
   if (isDesktop) {
     desktopCall("desktop_show").catch(() => {});
     return;
@@ -41,7 +43,7 @@ const profileDate = ref("");
 const historySaving = ref(false);
 watch(view, (value) => {
   const url = new URL(window.location.href);
-  if (["profile", "work-history", "whiteboard"].includes(value)) url.searchParams.set("view", value);
+  if (["profile", "work-history", "whiteboard", "billing"].includes(value)) url.searchParams.set("view", value);
   else url.searchParams.delete("view");
   window.history.replaceState({}, "", url);
 });
@@ -50,6 +52,8 @@ const search = ref("");
 const blockedOnly = ref(false);
 const statusFilter = ref("all");
 const sidebarOpen = ref(false);
+const projectSearch = ref("");
+const sidebarProjects = computed(() => state.projects.filter((project) => project.title.toLocaleLowerCase(currentLocale.value).includes(projectSearch.value.trim().toLocaleLowerCase(currentLocale.value))));
 const projectView = ref("board");
 const openActivity = ref(null);
 const activityOnly = ref(false);
@@ -160,12 +164,12 @@ onMounted(load);
   <div v-if="sidebarOpen" class="sidebar-backdrop" @click="sidebarOpen=false"></div>
   <aside class="sidebar" :class="{open:sidebarOpen}">
    <a class="brand" href="#" @click.prevent="chooseProject('all')"><span class="brand-mark"><span></span><span></span><span></span></span><span>fluxo<span class="brand-period">.</span></span></a>
-   <div class="workspace-name"><div class="workspace-icon"><Monitor :size="17" /></div><div><strong>{{ t("Meu espaço") }}</strong><span>{{ t("Feito para o seu ritmo") }}</span></div><span class="local-dot" :title="t('Espaço local')"></span></div>
    <p class="nav-label">{{ t("SEU TRABALHO") }}</p>
-   <nav><button class="nav-item" :class="{active:view==='board'&&selectedProject==='all'}" @click="chooseProject('all')"><LayoutDashboard :size="19" /> {{ t("Meu quadro") }} <span class="nav-count">{{ state.tasks.length }}</span></button><button class="nav-item" :class="{active:view==='projects'}" @click="changeView('projects')"><FolderOpen :size="19" /> {{ t("Projetos") }} <span class="nav-count">{{ state.projects.length }}</span></button><button class="nav-item" :class="{active:view==='calendar'}" @click="changeView('calendar')"><CalendarDays :size="19" /> {{ t("Calendário") }}</button><button class="nav-item" :class="{active:view==='daily'}" @click="changeView('daily')"><ListTodo :size="19" /> {{ t("Meu dia") }}</button><button class="nav-item" :class="{active:view==='work-history'}" @click="changeView('work-history')"><BarChart3 :size="19" /> {{ t("Histórico de horas") }}</button><button class="nav-item" :class="{active:view==='whiteboard'}" @click="changeView('whiteboard')"><Pencil :size="19" /> {{ t("Quadro de ideias") }}</button></nav>
-   <div class="nav-section-title"><p class="nav-label">{{ t("MEUS PROJETOS") }}</p><button class="icon-btn tiny" :aria-label="t('Criar projeto')" @click="projectForm={project:null}"><Plus :size="16" /></button></div>
-   <div class="sidebar-projects"><button v-for="p in state.projects" :key="p.id" class="nav-item project-link" :class="{active:view==='board'&&Number(selectedProject)===p.id}" @click="chooseProject(p.id)"><span class="project-dot" :class="p.cover"></span><span class="truncate">{{ p.title }}</span><span class="nav-count">{{ projectTasks(p).length }}</span></button><p v-if="!state.projects.length" class="sidebar-empty">{{ t("Suas ideias merecem") }}<br>{{ t("um lugar só delas.") }}</p><button class="nav-item project-link" :class="{active:view==='board'&&selectedProject==='none'}" @click="chooseProject('none')"><span class="project-dot neutral"></span> {{ t("Sem projeto") }}</button></div>
-   <div class="sidebar-bottom"><ThemeToggle /><button class="nav-item" :class="{active:view==='billing'}" @click="changeView('billing')"><Sparkles :size="17" /> {{ t("Planos e assinatura") }} <span class="nav-count">{{ auth.user?.billing?.plan === 'pro' ? 'Pro' : t('Grátis') }}</span></button><button class="nav-item profile-nav-button" :class="{active:view==='profile'}" @click="openProfile"><Settings2 :size="17" /> {{ t("Configurações do perfil") }}</button><div class="local-footer"><span class="local-dot"></span> {{ t("No seu computador") }} <span class="local-version">v1.0</span></div></div>
+   <nav><button class="nav-item" :class="{active:view==='board'&&selectedProject==='all'}" @click="chooseProject('all')"><LayoutDashboard :size="19" /> {{ t("Meu quadro") }} <span class="nav-count">{{ state.tasks.length }}</span></button><button class="nav-item" :class="{active:view==='calendar'}" @click="changeView('calendar')"><CalendarDays :size="19" /> {{ t("Calendário") }}</button><button class="nav-item" :class="{active:view==='daily'}" @click="changeView('daily')"><ListTodo :size="19" /> {{ t("Meu dia") }}</button><button class="nav-item" :class="{active:view==='work-history'}" @click="changeView('work-history')"><BarChart3 :size="19" /> {{ t("Histórico de horas") }} <LockKeyhole v-if="!workHours.canTrack.value" :size="12" style="margin-left:auto" /></button><button class="nav-item" :class="{active:view==='whiteboard'}" @click="changeView('whiteboard')"><Pencil :size="19" /> {{ t("Quadro de ideias") }}</button></nav>
+   <div class="nav-section-title"><button class="nav-label project-section-link" :class="{active:view==='projects'}" :aria-label="t('Ver todos os projetos')" @click="changeView('projects')">{{ t("MEUS PROJETOS") }} <span>{{ state.projects.length }}</span></button><button class="icon-btn tiny" :aria-label="t('Criar projeto')" @click="projectForm={project:null}"><Plus :size="16" /></button></div>
+   <div class="sidebar-project-search"><Search :size="13" /><input v-model="projectSearch" type="search" :placeholder="t('Buscar projetos...')" :aria-label="t('Filtrar projetos no menu')" /></div>
+   <div class="sidebar-projects"><button v-for="p in sidebarProjects" :key="p.id" class="nav-item project-link" :class="{active:view==='board'&&Number(selectedProject)===p.id}" @click="chooseProject(p.id)"><span class="project-dot" :class="p.cover"></span><span class="truncate">{{ p.title }}</span><span class="nav-count">{{ projectTasks(p).length }}</span></button><p v-if="projectSearch && !sidebarProjects.length" class="sidebar-empty">{{ t("Nenhum projeto encontrado.") }}</p><p v-else-if="!state.projects.length" class="sidebar-empty">{{ t("Suas ideias merecem") }}<br>{{ t("um lugar só delas.") }}</p><button class="nav-item project-link" :class="{active:view==='board'&&selectedProject==='none'}" @click="chooseProject('none')"><span class="project-dot neutral"></span> {{ t("Sem projeto") }}</button></div>
+   <div class="sidebar-bottom"><ThemeToggle /><button class="nav-item" :class="{active:view==='billing'}" @click="changeView('billing')"><Sparkles :size="17" /> {{ t("Planos e assinatura") }} <span class="nav-count">{{ auth.user?.billing?.plan === 'pro' ? 'Pro' : t('Grátis') }}</span></button><button class="nav-item profile-nav-button" :class="{active:view==='profile'}" @click="openProfile"><Settings2 :size="17" /> {{ t("Configurações do perfil") }}</button></div>
   </aside>
   <div class="main-shell">
    <header class="topbar"><div class="breadcrumb"><button class="icon-btn mobile-menu" :aria-label="t('Abrir menu')" @click="sidebarOpen=!sidebarOpen"><PanelLeftOpen :size="21" /></button><span>{{ t("Meu espaço") }}</span><ChevronRight :size="14" /><strong>{{ (view==='billing'?t('Planos e assinatura'):view==='whiteboard'?t('Quadro de ideias'):view==='work-history'?t('Histórico de horas'):view==='profile'?t('Configurações do perfil'):view==='daily'?t('Meu dia'):view==='calendar'?t('Calendário'):view==='projects'?t('Projetos'):currentProject?.title|| (selectedProject==='none'?t('Sem projeto'):t('Meu quadro'))) }}</strong></div><div class="save-indicator"><LoaderCircle v-if="state.saving || workHours.state.saving || historySaving || whiteboardBusy" :size="13" class="spin" /><Check v-else :size="13" /><span>{{ (state.saving || workHours.state.saving || historySaving || whiteboardBusy?(whiteboard.state.error?t('Quadro com alterações não salvas'):t('Salvando...')):t('Tudo salvo localmente')) }}</span></div><div class="account-controls"><LanguageSelect :disabled="!!state.saving || workHours.state.saving || historySaving" /><button class="account-identity" :title="auth.user?.email" :aria-label="t('Abrir configurações do perfil')" @click="openProfile"><span class="account-avatar">{{ auth.user?.name?.slice(0,1).toUpperCase() }}</span><span class="truncate">{{ auth.user?.name }}</span></button><button class="account-exit" :disabled="logoutBusy || !!state.saving || workHours.state.saving || historySaving || whiteboardBusy" @click="logout"><LogOut :size="15" /> {{ t(logoutBusy?t('Saindo...'):t('Sair')) }}</button></div></header>
@@ -173,7 +177,8 @@ onMounted(load);
     <section v-if="!['profile','work-history','whiteboard','billing'].includes(view)" class="hero" :class="{'project-hero':currentProject,'calendar-hero':view==='calendar'}" :style="currentProject?.cover_path?{backgroundImage:'url('+currentProject.cover_path+')'}:undefined"><img v-if="!currentProject?.cover_path" :src="view==='calendar'?'/ui/calendar-garden.svg':'/ui/hero.png'" :alt="view==='calendar'?t('Ilustração de um calendário entre plantas e ideias'):t('Ilustração de uma mesa criativa com notebook, plantas e caderno')" class="hero-image" :class="currentProject?.cover"><div class="hero-shade"></div><div class="hero-content"><span class="eyebrow"><span class="hero-dot"></span>{{ view==='daily'?t('UM DIA PARA CADA PEQUENA CONQUISTA'):view==='calendar'?t('SEU CALENDÁRIO DE ENTREGAS'):currentProject?t('ESPAÇO DO PROJETO'):t('SEU ESPAÇO PARA FAZER ACONTECER') }}</span><h1>{{ view==='daily'?t('Hoje, um passo de cada vez.'):view==='calendar'?t('Dê um dia às suas ideias.'):currentProject?.title || (view==='projects'?t('Toda ideia merece um espaço.'):t('Um passo de cada vez.')) }}</h1><p>{{ view==='daily'?t('Atividades de todos os projetos, no seu ritmo.'):view==='calendar'?t('Planeje suas entregas, encontre espaço e veja suas ideias avançarem.'):currentProject?t('Organize seus passos e acompanhe cada conquista.'):view==='projects'?t('Reúna suas tasks, dê forma às ideias e comece algo novo.'):t('Organize suas ideias. Desbloqueie seus próximos passos.') }}</p><div class="hero-date">{{ today }}</div></div></section>
     <BillingSettings v-if="view==='billing'" />
     <ProfileSettings v-else-if="view==='profile'" :work-hours="workHours" :initial-date="profileDate" @upgrade="changeView('billing')" @open-widget="showWorkWidget" @open-history="changeView('work-history')" />
-    <WorkHistory v-else-if="view==='work-history'" :work-hours="workHours" @register="openProfile" @saving-change="historySaving=$event" />
+    <WorkHistory v-else-if="view==='work-history' && workHours.canTrack.value" :work-hours="workHours" @register="openProfile" @saving-change="historySaving=$event" />
+    <WorkTrackingUpgrade v-else-if="view==='work-history'" @upgrade="changeView('billing')" />
     <FluxoWhiteboard v-else-if="view==='whiteboard'" :board="whiteboard" />
     <template v-else-if="state.loading"><div class="loading-state"><LoaderCircle :size="28" class="spin" /><p>{{ t("Abrindo seu espaço...") }}</p></div></template>
     <div v-else-if="state.error" class="error-state"><p>{{ state.error }}</p><button class="btn primary" @click="load"><RefreshCw :size="16" /> {{ t("Tentar novamente") }}</button></div>
@@ -202,15 +207,15 @@ onMounted(load);
   <TaskForm v-if="taskForm" :task="taskForm.task" :project-id="taskForm.projectId??selectedProject" :due-date="taskForm.dueDate" @close="taskForm=null" @saved="taskSaved" />
   <ProjectForm v-if="projectForm" :project="projectForm.project" @upgrade="projectForm=null;changeView('billing')" @close="projectForm=null" @saved="projectSaved" />
   <ConfirmDialog v-if="deleting" :title="deleting.title" :message="deleting.message" :project="deleting.project" @close="deleting=null" @confirm="deleteItem" />
-  <WorkHoursWidget v-if="!isDesktop" :position-key="'fluxo:work-widget-position:' + auth.user?.id" :day="workDay" :entries="workHours.state.data?.active_day.entries || {}" :hourly-rate="workHours.state.data?.settings.hourlyRate" v-model:expanded="workWidgetExpanded" :busy="workHours.state.saving" @finish="workHours.finish" @action="workHours.act" @settings="openProfile" />
+  <WorkHoursWidget v-if="!isDesktop && workHours.canTrack.value" :position-key="'fluxo:work-widget-position:' + auth.user?.id" :day="workDay" :entries="workHours.state.data?.active_day.entries || {}" :hourly-rate="workHours.state.data?.settings.hourlyRate" :breaks="workHours.state.data?.active_day.breaks || []" v-model:expanded="workWidgetExpanded" :busy="workHours.state.saving" @finish="workHours.finish" @action="workHours.act" @settings="openProfile" />
   <Transition name="toast"><div v-if="state.toast" class="toast-message" :class="state.toast.kind" role="status"><CheckCircle2 v-if="state.toast.kind==='success'" :size="18" /><Circle v-else :size="18" /><span>{{ state.toast.message }}</span><button class="icon-btn tiny" :aria-label="t('Fechar aviso')" @click="state.toast=null"><X :size="14" /></button></div></Transition>
  </div>
 </template>
 
 <style scoped>
 .profile-nav-button {
-  margin-top: 15px;
-  margin-bottom: 5px;
+  margin-top: 0;
+  margin-bottom: 0;
   font-size: 10px;
   gap: 8px;
 }

@@ -22,8 +22,6 @@ export default defineConfig({
     rollupOptions: {
       input: {
         app: fileURLToPath(new URL("./index.html", import.meta.url)),
-        workHours: fileURLToPath(new URL("./prototypes/work-hours.html", import.meta.url)),
-        workHistory: fileURLToPath(new URL("./prototypes/work-history.html", import.meta.url)),
       },
     },
   },

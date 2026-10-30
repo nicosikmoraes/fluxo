@@ -53,7 +53,11 @@ class BillingTest extends TestCase
 
     private function price(): array
     {
-        return ['id' => 'price_fluxo_test', 'object' => 'price', 'active' => true, 'currency' => 'usd', 'unit_amount' => 500, 'recurring' => ['interval' => 'month', 'interval_count' => 1]];
+        return [
+            'id' => 'price_fluxo_test', 'object' => 'price', 'active' => true, 'currency' => 'usd', 'unit_amount' => 500,
+            'recurring' => ['interval' => 'month', 'interval_count' => 1],
+            'currency_options' => ['usd' => ['unit_amount' => 500], 'brl' => ['unit_amount' => 1299]],
+        ];
     }
 
     private function checkoutSession(string $status = 'open'): array
@@ -99,6 +103,19 @@ class BillingTest extends TestCase
         ];
     }
 
+    public function test_both_fixed_regional_prices_are_available_regardless_of_account_language(): void
+    {
+        $user = User::factory()->create(['locale' => 'pt-BR']);
+        $this->actingAs($user)->getJson('/api/billing')->assertOk()
+            ->assertJsonPath('price.amounts.brl', 1299)->assertJsonPath('price.amounts.usd', 500);
+
+        $user->update(['locale' => 'en-US']);
+
+        $this->getJson('/api/billing')->assertOk()
+            ->assertJsonPath('price.amounts.brl', 1299)->assertJsonPath('price.amounts.usd', 500);
+        $this->assertSame([], $this->stripeRequests);
+    }
+
     #[DataProvider('subscriptionStates')]
     public function test_access_follows_confirmed_subscription_status_and_period(string $status, ?string $end, string $price, string $plan): void
     {
@@ -106,6 +123,7 @@ class BillingTest extends TestCase
         $user = User::factory()->create();
         $this->subscription($user, $status, ['ends_at' => $end, 'stripe_price' => $price]);
         $this->actingAs($user)->getJson('/api/billing')->assertOk()->assertJsonPath('plan', $plan)
+            ->assertJsonPath('entitlements.work_tracking', $plan === 'pro')
             ->assertJsonPath('entitlements.pay_calculation', $plan === 'pro')
             ->assertJsonPath('entitlements.ad_free', $plan === 'pro');
     }
@@ -155,29 +173,50 @@ class BillingTest extends TestCase
         $this->assertDatabaseCount('roadmaps', 3);
     }
 
-    public function test_free_time_tracking_remains_available_and_pay_inputs_return_403(): void
+    public static function workTrackingEndpoints(): array
     {
-        $this->travelTo(CarbonImmutable::parse('2026-10-29T20:00:00Z'));
-        $this->actingAs(User::factory()->create(['locale' => 'en-US']));
-        $payload = ['settings' => [...WorkDay::defaultSettings('UTC'), 'enabled' => true], 'settings_version' => 0, 'entry_version' => 0, 'date' => '2026-10-29', 'entries' => ['startedAt' => '09:00', 'lunchOut' => '', 'lunchIn' => '', 'finishedAt' => '17:00']];
-        $this->putJson('/api/profile/work-hours', $payload)->assertOk()->assertJsonPath('day.entries.finishedAt', '17:00')->assertJsonPath('settings.hourlyRate', null);
-        $this->putJson('/api/profile/work-hours', ['settings' => ['hourlyRate' => 25]])->assertForbidden()->assertJsonPath('message', 'Pay calculation is available with Fluxo Pro.');
-        $this->putJson('/api/profile/work-hours/receipts', [])->assertForbidden();
-        $this->assertDatabaseCount('work_days', 1);
+        return [
+            ['GET', '/api/profile/work-hours'],
+            ['PUT', '/api/profile/work-hours'],
+            ['POST', '/api/profile/work-hours/records'],
+            ['GET', '/api/profile/work-hours/history?start=2026-10-28&end=2026-10-29'],
+            ['PUT', '/api/profile/work-hours/receipts'],
+        ];
     }
 
-    public function test_downgrade_redacts_current_and_historical_pay_without_erasing_stored_values(): void
+    #[DataProvider('workTrackingEndpoints')]
+    public function test_free_accounts_cannot_access_any_work_tracking_endpoint_even_if_previously_enabled(string $method, string $url): void
+    {
+        $settings = [...WorkDay::defaultSettings('UTC'), 'enabled' => true, 'hourlyRate' => 25];
+        $user = User::factory()->create(['locale' => 'en-US', 'work_settings' => $settings]);
+
+        $this->actingAs($user)->json($method, $url, ['settings' => ['enabled' => true], 'billing' => ['plan' => 'pro']])
+            ->assertForbidden()->assertJsonPath('message', 'Work tracking is available with Fluxo Pro.')
+            ->assertJsonMissingPath('day')->assertJsonMissingPath('records');
+        $this->assertDatabaseCount('work_days', 0);
+        $this->assertSame(0, $user->fresh()->work_settings_version);
+        $this->assertSame(25, $user->fresh()->work_settings['hourlyRate']);
+    }
+
+    public function test_downgrade_blocks_tracking_and_preserves_records_until_the_subscription_is_restored(): void
     {
         $settings = [...WorkDay::defaultSettings('UTC'), 'monthlySalary' => 4400, 'hourlyRate' => 25];
         $user = User::factory()->create(['work_settings' => $settings]);
+        $subscription = $this->subscription($user, 'canceled');
         $this->actingAs($user);
         $day = WorkDay::create(['work_date' => '2026-10-28', 'timezone' => 'UTC', 'started_at' => '2026-10-28 09:00:00', 'finished_at' => '2026-10-28 18:00:00', 'regime' => $settings]);
         $day->forceFill(['overtime_receipt' => ['amount_cents' => 3000, 'received_on' => '2026-10-29']])->save();
 
-        $this->getJson('/api/profile/work-hours?date=2026-10-28')->assertOk()->assertJsonPath('settings.monthlySalary', null)->assertJsonPath('day.regime.hourlyRate', null)->assertJsonPath('day.receipt.amount', null)->assertJsonPath('day.receipt.received_on', null);
-        $this->getJson('/api/profile/work-hours/history?start=2026-10-28&end=2026-10-29')->assertOk()->assertJsonPath('records.0.regime.monthlySalary', null)->assertJsonPath('records.0.receipt.amount', null);
+        $this->getJson('/api/profile/work-hours?date=2026-10-28')->assertForbidden();
+        $this->getJson('/api/profile/work-hours/history?start=2026-10-28&end=2026-10-29')->assertForbidden();
         $this->assertSame(4400, $user->fresh()->work_settings['monthlySalary']);
         $this->assertSame(3000, $day->fresh()->overtime_receipt['amount_cents']);
+
+        $subscription->update(['stripe_status' => 'active']);
+
+        $this->getJson('/api/profile/work-hours?date=2026-10-28')->assertOk()
+            ->assertJsonPath('settings.monthlySalary', 4400)->assertJsonPath('day.entries.startedAt', '09:00');
+        $this->getJson('/api/profile/work-hours/history?start=2026-10-28&end=2026-10-29')->assertOk()->assertJsonCount(1, 'records');
     }
 
     public function test_unconfigured_checkout_returns_503_without_contacting_stripe(): void
@@ -193,12 +232,14 @@ class BillingTest extends TestCase
         $user = User::factory()->create(['locale' => 'pt-BR']);
         $other = User::factory()->create();
         $this->actingAs($user);
-        $this->postJson('/api/billing/checkout', ['price' => 'price_cheaper', 'amount' => 1, 'user_id' => $other->id, 'success_url' => 'https://evil.example'])->assertOk()->assertJsonPath('url', 'https://checkout.stripe.com/c/pay/test_fluxo');
+        $this->postJson('/api/billing/checkout', ['price' => 'price_cheaper', 'amount' => 1, 'currency' => 'eur', 'user_id' => $other->id, 'success_url' => 'https://evil.example'])->assertOk()->assertJsonPath('url', 'https://checkout.stripe.com/c/pay/test_fluxo');
         $payload = $this->stripeRequests[2]['params'];
         $this->assertSame('cus_owner', $payload['customer']);
         $this->assertSame('price_fluxo_test', $payload['line_items'][0]['price']);
         $this->assertSame('subscription', $payload['mode']);
-        $this->assertSame('true', $payload['adaptive_pricing']['enabled']);
+        $this->assertSame('false', $payload['adaptive_pricing']['enabled']);
+        $this->assertArrayNotHasKey('currency', $payload);
+        $this->assertSame(['currency_options'], $this->stripeRequests[0]['params']['expand']);
         $this->assertSame('https://fluxo.example/?view=billing&checkout=success', $payload['success_url']);
         $this->assertSame('pt-BR', $payload['locale']);
         $this->assertSame('default', $payload['subscription_data']['metadata']['type']);
@@ -210,12 +251,37 @@ class BillingTest extends TestCase
         $this->getJson('/api/billing?checkout=success')->assertOk()->assertJsonPath('plan', 'free');
     }
 
-    public function test_english_checkout_stays_in_dollars_without_adaptive_pricing(): void
+    public function test_english_checkout_uses_the_same_regional_price_without_forcing_dollars(): void
     {
         $this->fakeStripe([$this->price(), ['id' => 'cus_en', 'object' => 'customer'], $this->checkoutSession()]);
         $this->actingAs(User::factory()->create(['locale' => 'en-US']))->postJson('/api/billing/checkout')->assertOk();
         $this->assertSame('false', $this->stripeRequests[2]['params']['adaptive_pricing']['enabled']);
         $this->assertSame('en', $this->stripeRequests[2]['params']['locale']);
+        $this->assertArrayNotHasKey('currency', $this->stripeRequests[2]['params']);
+        $this->assertSame('price_fluxo_test', $this->stripeRequests[2]['params']['line_items'][0]['price']);
+    }
+
+    public static function invalidRegionalPrices(): array
+    {
+        return [
+            'no currency options' => [[]],
+            'missing BRL' => [['usd' => ['unit_amount' => 500]]],
+            'wrong BRL amount' => [['usd' => ['unit_amount' => 500], 'brl' => ['unit_amount' => 1500]]],
+            'wrong USD option' => [['usd' => ['unit_amount' => 400], 'brl' => ['unit_amount' => 1299]]],
+            'unexpected third currency' => [['usd' => ['unit_amount' => 500], 'brl' => ['unit_amount' => 1299], 'eur' => ['unit_amount' => 500]]],
+        ];
+    }
+
+    #[DataProvider('invalidRegionalPrices')]
+    public function test_invalid_regional_prices_return_503_before_creating_a_customer(array $options): void
+    {
+        $this->fakeStripe([[...$this->price(), 'currency_options' => $options]]);
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->postJson('/api/billing/checkout')->assertStatus(503)
+            ->assertJsonPath('message', 'O preço da assinatura precisa ser configurado. Tente novamente em breve.');
+        $this->assertCount(1, $this->stripeRequests);
+        $this->assertDatabaseHas('users', ['id' => $user->id, 'stripe_id' => null, 'stripe_checkout_id' => null]);
     }
 
     public function test_wrong_price_amount_returns_503_before_creating_a_customer(): void
@@ -225,6 +291,60 @@ class BillingTest extends TestCase
         $this->actingAs($user)->postJson('/api/billing/checkout')->assertStatus(503);
         $this->assertCount(1, $this->stripeRequests);
         $this->assertDatabaseHas('users', ['id' => $user->id, 'stripe_id' => null]);
+    }
+
+    public function test_an_open_checkout_from_old_pricing_is_expired_before_opening_the_current_price(): void
+    {
+        $old = [...$this->checkoutSession(), 'id' => 'cs_test_old', 'url' => 'https://checkout.stripe.com/c/pay/old'];
+        $this->fakeStripe([$old, [...$old, 'status' => 'expired'], $this->price(), ['id' => 'cus_owner', 'object' => 'customer'], $this->checkoutSession()]);
+        $user = User::factory()->create([
+            'stripe_id' => 'cus_owner', 'stripe_checkout_id' => 'cs_test_old',
+            'stripe_checkout_payload' => ['line_items' => [['price' => 'price_old', 'quantity' => 1]], 'adaptive_pricing' => ['enabled' => true]],
+        ]);
+
+        $this->actingAs($user)->postJson('/api/billing/checkout')->assertOk()
+            ->assertJsonPath('url', 'https://checkout.stripe.com/c/pay/test_fluxo');
+
+        $this->assertSame('/v1/checkout/sessions/cs_test_old/expire', $this->stripeRequests[1]['path']);
+        $this->assertSame('post', $this->stripeRequests[1]['method']);
+        $this->assertSame('price_fluxo_test', $this->stripeRequests[4]['params']['line_items'][0]['price']);
+        $this->assertSame('false', $this->stripeRequests[4]['params']['adaptive_pricing']['enabled']);
+        $this->assertDatabaseHas('users', ['id' => $user->id, 'stripe_checkout_id' => 'cs_test_fluxo']);
+    }
+
+    public function test_an_old_unreturned_checkout_attempt_is_replaced_without_reusing_its_payload(): void
+    {
+        $this->fakeStripe([$this->price(), ['id' => 'cus_owner', 'object' => 'customer'], $this->checkoutSession()]);
+        $oldAttempt = 'd8d29db1-a477-4d31-b828-8e548a19f5e4';
+        $user = User::factory()->create([
+            'stripe_checkout_attempt' => $oldAttempt,
+            'stripe_checkout_payload' => ['line_items' => [['price' => 'price_old', 'quantity' => 1]], 'adaptive_pricing' => ['enabled' => true]],
+        ]);
+
+        $this->actingAs($user)->postJson('/api/billing/checkout')->assertOk();
+
+        $this->assertNotSame($oldAttempt, $user->fresh()->stripe_checkout_attempt);
+        $this->assertSame('price_fluxo_test', $this->stripeRequests[2]['params']['line_items'][0]['price']);
+        $this->assertSame('false', $this->stripeRequests[2]['params']['adaptive_pricing']['enabled']);
+    }
+
+    public function test_retrying_a_current_checkout_attempt_preserves_its_payload_and_idempotency_key(): void
+    {
+        $this->fakeStripe([$this->price(), ['id' => 'cus_owner', 'object' => 'customer'], $this->checkoutSession()]);
+        $attempt = 'd8d29db1-a477-4d31-b828-8e548a19f5e4';
+        $payload = [
+            'mode' => 'subscription', 'customer' => 'cus_owner', 'locale' => 'en',
+            'line_items' => [['price' => 'price_fluxo_test', 'quantity' => 1]],
+            'adaptive_pricing' => ['enabled' => false], 'expires_at' => time() + 1860,
+        ];
+        $user = User::factory()->create(['locale' => 'pt-BR', 'stripe_id' => 'cus_owner', 'stripe_checkout_attempt' => $attempt, 'stripe_checkout_payload' => $payload]);
+
+        $this->actingAs($user)->postJson('/api/billing/checkout')->assertOk();
+
+        $this->assertSame($attempt, $user->fresh()->stripe_checkout_attempt);
+        $this->assertSame($payload, $user->fresh()->stripe_checkout_payload);
+        $this->assertContains('Idempotency-Key: fluxo-checkout-'.$attempt, $this->stripeRequests[2]['headers']);
+        $this->assertSame('en', $this->stripeRequests[2]['params']['locale']);
     }
 
     public function test_existing_subscription_cannot_start_another_checkout_with_409(): void

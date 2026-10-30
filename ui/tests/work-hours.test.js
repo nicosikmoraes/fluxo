@@ -52,11 +52,11 @@ describe("Cálculo da jornada", () => {
     expect(day.overtimeSeconds).toBe(0);
   });
 
-  it("só mostra o widget depois do terceiro horário e com o recurso ativado", () => {
-    expect(calculateWorkDay(settings, { ...entries, lunchIn: "" }, 755).showWidget).toBe(false);
+  it("mostra o widget com o recurso ativado sem exigir uma pausa", () => {
+    expect(calculateWorkDay(settings, { ...entries, lunchIn: "" }, 755).showWidget).toBe(true);
     expect(calculateWorkDay({ ...settings, enabled: false }, entries, 984).showWidget).toBe(false);
     expect(calculateWorkDay(settings, entries, 984).showWidget).toBe(true);
-    expect(calculateWorkDay(settings, emptyWorkEntries, 984).showWidget).toBe(false);
+    expect(calculateWorkDay(settings, emptyWorkEntries, 984).showWidget).toBe(true);
   });
 
   it("acompanha uma jornada que atravessa a meia-noite", () => {
@@ -160,7 +160,7 @@ describe("Protótipo navegável", () => {
     await wrapper.find("#prototype-scenario").setValue("overtime");
     expect(wrapper.find(".work-widget-duration").text()).toContain("+42min");
     expect(wrapper.find(".work-widget-money").text()).toContain("21,00");
-    await wrapper.find(".work-widget-finish").trigger("click");
+    await wrapper.findAll(".work-widget-finish").find((button) => button.text().includes("Finalizar")).trigger("click");
     expect(wrapper.find(".work-widget-status").text()).toContain("encerrada");
     await wrapper.find("#prototype-clock").setValue("20:30");
     expect(wrapper.find(".work-widget-duration").text()).toContain("+42min");
@@ -169,10 +169,11 @@ describe("Protótipo navegável", () => {
     expect(wrapper.find(".work-widget-no-salary").exists()).toBe(true);
   });
 
-  it("aguarda o retorno do almoço e respeita a desativação do recurso", async () => {
+  it("mantém o widget disponível durante a pausa e respeita a desativação do recurso", async () => {
     const wrapper = open();
     await wrapper.find("#prototype-scenario").setValue("lunch");
-    expect(wrapper.find(".work-widget-anchor").exists()).toBe(false);
+    expect(wrapper.find(".work-widget-anchor").exists()).toBe(true);
+    expect(wrapper.find(".work-widget-status").text()).toContain("Em pausa");
     await wrapper.find("#work-lunchIn").setValue("12:30");
     expect(wrapper.find(".work-widget-anchor").exists()).toBe(true);
     await wrapper.find('[role="switch"]').trigger("click");

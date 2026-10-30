@@ -4,6 +4,7 @@ import { CheckCircle2, Clock3, LoaderCircle, RefreshCw, Settings2 } from "@lucid
 import { auth } from "../auth/auth";
 import { notify } from "../../state/workspace";
 import WorkHoursSettings from "./WorkHoursSettings.vue";
+import WorkTrackingUpgrade from "./WorkTrackingUpgrade.vue";
 import AppearanceSettings from "../appearance/AppearanceSettings.vue";
 import { defaultWorkSettings, emptyWorkEntries, parseWorkTime, validateWorkSettings, workTimeInTimezone } from "./workHours";
 
@@ -51,7 +52,7 @@ watch(() => props.workHours.state.data, (data) => {
 }, { immediate: true });
 
 onMounted(() => {
-  if (props.initialDate && props.initialDate !== date.value) reload(props.initialDate);
+  if (props.workHours.canTrack.value && props.initialDate && props.initialDate !== date.value) reload(props.initialDate);
 });
 
 async function reload(selectedDate = date.value) {
@@ -138,13 +139,13 @@ function selectDate(value) {
     </header>
     <div class="profile-settings-account"><span class="profile-settings-avatar">{{ auth.user?.name?.slice(0, 1).toUpperCase() }}</span><div><strong>{{ auth.user?.name }}</strong><span>{{ auth.user?.email }}</span></div><Settings2 :size="16" /></div>
     <AppearanceSettings />
-    <div class="profile-settings-tabs"><span><Clock3 :size="14" /> {{ t("Jornada de trabalho") }}</span><button class="text-btn profile-history-link" :disabled="busy" @click="emit('open-history')">{{ t("Ver histórico de horas") }} <Clock3 :size="13" /></button></div>
+    <div class="profile-settings-tabs"><span><Clock3 :size="14" /> {{ t("Jornada de trabalho") }}</span><button v-if="workHours.canTrack.value" class="text-btn profile-history-link" :disabled="busy" @click="emit('open-history')">{{ t("Ver histórico de horas") }} <Clock3 :size="13" /></button></div>
 
-    <div v-if="!initialized && workHours.state.loading" class="loading-state"><LoaderCircle :size="24" class="spin" /><p>{{ t("Carregando seu perfil...") }}</p></div>
+    <WorkTrackingUpgrade v-if="!workHours.canTrack.value" @upgrade="emit('upgrade')" />
+    <div v-else-if="!initialized && workHours.state.loading" class="loading-state"><LoaderCircle :size="24" class="spin" /><p>{{ t("Carregando seu perfil...") }}</p></div>
     <div v-else-if="!initialized" class="profile-settings-error" role="alert"><p>{{ error || workHours.state.error }}</p><button class="text-btn" @click="reload()"><RefreshCw :size="14" /> {{ t("Tentar novamente") }}</button></div>
     <template v-else>
       <div v-if="error" class="profile-settings-error" role="alert"><p>{{ error }}</p><button class="text-btn" :disabled="busy" @click="reload()"><RefreshCw :size="14" /> {{ t("Atualizar dados") }}</button></div>
-      <p v-if="!auth.user?.billing?.entitlements?.pay_calculation" class="profile-settings-footnote">{{ t("Calcule seu pagamento com o Fluxo Pro. O registro de horas continua gratuito.") }} <button class="text-btn" @click="emit('upgrade')">{{ t("Conhecer Fluxo Pro") }}</button></p>
       <WorkHoursSettings :can-calculate-pay="!!auth.user?.billing?.entitlements?.pay_calculation" v-model:settings="settings" v-model:entries="entries" v-model:extra-breaks="extraBreaks" :date="date" :max-date="workHours.state.data.today" :now-minutes="nowMinutes" :saving="busy" :can-record-now="canRecordNow" editable-date allow-equal-times @update:date="selectDate" @save="save()" @record="recordNow" @open-widget="emit('open-widget')" />
       <p class="profile-settings-footnote">{{ t("Horários em") }} {{ (recordTimezone || settings.timezone).replaceAll('_', ' ') }}.{{ dirty ? t(' Você tem alterações para salvar.') : t(' Suas preferências e seus horários ficam salvos na sua conta.') }}</p>
     </template>

@@ -8,6 +8,7 @@ import { currentLocale, t } from "../../state/locale";
 const props = defineProps({
   day: { type: Object, required: true },
   entries: { type: Object, required: true },
+  breaks: { type: Array, default: () => [] },
   expanded: { type: Boolean, default: true },
   busy: { type: Boolean, default: false },
   nativeWindow: { type: Boolean, default: false },
@@ -20,6 +21,7 @@ const anchor = ref(null);
 const { style: positionStyle, dragging, start: startDragging, captureClick, moveWithKeyboard } = useDraggableWidget(anchor, () => props.positionKey);
 const isExtra = computed(() => props.day.overtimeSeconds > 0);
 const englishMode = computed(() => currentLocale.value === "en-US");
+const pauses = computed(() => props.breaks.length ? props.breaks : props.entries.lunchOut ? [{ startTime: props.entries.lunchOut, endTime: props.entries.lunchIn }] : []);
 const statusLabel = computed(() => props.day.stale ? t("Revise os horários") : props.day.finished ? t("Jornada encerrada") : !props.day.started ? t("Pronto para começar") : props.day.paused ? t("Em pausa") : isExtra.value ? t("Em hora extra") : t("Em andamento"));
 const duration = computed(() => formatWorkDuration(englishMode.value ? props.day.workedSeconds : isExtra.value ? props.day.overtimeSeconds : props.day.remainingSeconds));
 const compactLabel = computed(() => {
@@ -104,18 +106,19 @@ function collapseFromHeader(event) {
 
           <div class="work-widget-timeline">
             <div><span>{{ t("Entrada") }}</span><strong>{{ entries.startedAt || '—' }}</strong></div>
-            <span class="work-widget-divider"></span>
-            <div><span><Coffee :size="11" /> {{ t("Pausas") }}</span><strong>{{ formatWorkDuration(day.lunchSeconds) }}</strong></div>
+            <template v-if="pauses.length"><span class="work-widget-divider"></span>
+            <div><span><Coffee :size="11" /> {{ t("Pausas") }}</span><strong>{{ formatWorkDuration(day.lunchSeconds) }}</strong></div></template>
             <span class="work-widget-divider"></span>
             <div><span>{{ t("Saída") }}</span><strong>{{ entries.finishedAt || '—' }}</strong></div>
           </div>
+          <div v-if="pauses.length" class="work-widget-pauses"><div v-for="(pause, index) in pauses" :key="index"><strong>{{ t('Pausa {number}', { number: index + 1 }) }}</strong><span>{{ t('Início') }} <b>{{ pause.startTime }}</b></span><span>{{ t('Retorno') }} <b>{{ pause.endTime || t('Em pausa') }}</b></span></div></div>
         </div>
 
         <p v-if="!englishMode" class="work-widget-cycle">{{ formatWorkDuration(day.cycleOvertimeSeconds) }} {{ t("extras no ciclo · após 20h: 75% · domingo: 100%") }}</p>
         <footer class="work-widget-footer">
           <button v-if="!day.started" class="work-widget-finish" :disabled="busy || day.stale" @click="emit('action', 'start')"><Play :size="14" /> {{ t("Iniciar trabalho") }}</button>
           <template v-else-if="!day.finished && !day.stale">
-            <button class="work-widget-finish" :disabled="busy" @click="emit('action', day.paused ? 'resume' : 'pause')"><component :is="day.paused ? Play : Pause" :size="14" /> {{ day.paused ? t('Retomar') : t('Pausar') }}</button>
+            <button class="work-widget-finish" :disabled="busy" @click="emit('action', day.paused ? 'resume' : 'pause')"><component :is="day.paused ? Play : Pause" :size="14" /> {{ day.paused ? t('Retornar ao trabalho') : t('Iniciar pausa') }}</button>
             <button class="work-widget-finish" :disabled="busy" @click="emit('finish')"><LogOut :size="14" /> {{ busy ? t('Registrando...') : t('Finalizar') }}</button>
           </template>
           <button v-else class="work-widget-finish finished" @click="emit('settings')"><Check :size="14" /> {{ t("Ver registros de hoje") }}</button>
@@ -135,6 +138,10 @@ function collapseFromHeader(event) {
 </template>
 
 <style scoped>
+.work-widget-pauses { display: grid; gap: 8px; padding: 0 0 14px; color: var(--theme-text-secondary, #8795ad); font-size: 9px; }
+.work-widget-pauses > div { display: flex; flex-wrap: wrap; gap: 5px 12px; padding: 9px; border-radius: 7px; background: var(--theme-surface-muted, #f5f7fd); }
+.work-widget-pauses strong { width: 100%; color: var(--theme-text, #596982); font-size: 10px; font-weight: 550; }
+.work-widget-pauses b { font-weight: 500; color: var(--theme-text, #596982); }
 .work-widget-anchor.is-native { position: static; max-width: none; }
 .is-native .work-widget { width: 100%; max-height: none; box-shadow: none; }
 .is-native .work-widget-compact { width: 100%; max-width: none; box-shadow: none; cursor: pointer; }

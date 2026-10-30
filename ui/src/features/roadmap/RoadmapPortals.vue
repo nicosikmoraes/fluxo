@@ -1,4 +1,5 @@
 <script setup>
+import { vValidate } from "../../shared/validation";
 import { t } from "../../state/locale";
 import { computed, ref, watch } from "vue";
 import { Flag, Pencil, X } from "@lucide/vue";
@@ -157,7 +158,7 @@ defineExpose({ openForm, createConnected, connect, markers, setPositions, cancel
   <button v-if="marker.label" class="map-portal-label" @pointerdown.stop @click="edit(marker)">{{ marker.label }}</button>
  </article>
  <Teleport to="body">
- <Modal v-if="form" :title="form.id?t('Editar portal'):t('Adicionar portal')" @close="form=null"><form class="form-stack" @submit.prevent="save"><label>{{ t("Texto abaixo") }} <span class="optional">{{ t("opcional") }}</span><input v-model="label" maxlength="160" autofocus :placeholder="t('Ex.: Entrega do site')"></label><p class="muted small">{{ t("Um marco visual para organizar seu caminho.") }}</p><footer class="modal-actions"><button type="button" class="btn secondary" @click="form=null">{{ t("Cancelar") }}</button><button class="btn primary">{{ form.id?t('Salvar'):t('Adicionar portal') }}</button></footer></form></Modal>
+ <Modal v-if="form" :title="form.id?t('Editar portal'):t('Adicionar portal')" @close="form=null"><form v-validate novalidate class="form-stack" @submit.prevent="save"><label>{{ t("Texto abaixo") }} <span class="optional">{{ t("opcional") }}</span><input v-model="label" data-validate-maxlength="160" autofocus :placeholder="t('Ex.: Entrega do site')"></label><p class="muted small">{{ t("Um marco visual para organizar seu caminho.") }}</p><footer class="modal-actions"><button type="button" class="btn secondary" @click="form=null">{{ t("Cancelar") }}</button><button class="btn primary">{{ form.id?t('Salvar'):t('Adicionar portal') }}</button></footer></form></Modal>
  <ConfirmDialog v-if="removingLink" :title="t('Remover conexão?')" message="O portal e a atividade continuam no roadmap." @close="removingLink=null" @confirm="removeLink"/>
  </Teleport>
 </template>

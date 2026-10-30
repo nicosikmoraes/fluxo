@@ -1,4 +1,5 @@
 <script setup>
+import { vValidate } from "../../../../shared/validation";
 import { t } from "../../../../state/locale";
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { X, Clock3, Check, Wallet, Info } from "@lucide/vue";
@@ -58,9 +59,9 @@ function close() {
           <div v-if="record.overtimeRate != null"><p v-for="(part, index) in record.overtimeBreakdown" :key="index" class="day-rate">{{ duration(part.seconds / 60) }} {{ t("com adicional de") }} {{ part.premium }}% · {{ money(Number(record.regime.monthlySalary) / Number(record.regime.monthlyHours) * (1 + part.premium / 100)) }} {{ t("/ hora") }}</p></div>
           <p v-else class="day-rate">{{ t("Sem salário registrado neste dia. Você pode informar o valor que recebeu pelas horas extras.") }}</p>
           <p v-if="record.receivedOn" class="day-received-info">{{ t("Recebido:") }} {{ money(record.received) }} {{ t("em") }} {{ dateLabel(record.receivedOn, { year: 'numeric' }) }}.</p>
-          <form v-if="record.status === 'complete' || preview" @submit.prevent="saveReceipt">
+          <form v-validate novalidate v-if="record.status === 'complete' || preview" @submit.prevent="saveReceipt">
             <fieldset :disabled="busy || !record.overtime" class="day-receipt-form">
-              <div class="day-receipt-fields"><label>{{ t("Valor recebido") }}<div class="day-currency"><span>R$</span><input v-model="received" :aria-label="t('Valor recebido')" type="number" step="0.01" min="0.01" max="999999999" required></div></label><label>{{ t("Data do recebimento") }}<input v-model="receivedOn" type="date" :max="record.today || today" :min="record.date" required></label></div>
+              <div class="day-receipt-fields"><label>{{ t("Valor recebido") }}<div class="day-currency"><span>R$</span><input v-model="received" :aria-label="t('Valor recebido')" type="number" step="any" data-validate-money data-validate-min="0.01" data-validate-max="999999999" data-validate-required aria-required="true"></div></label><label>{{ t("Data do recebimento") }}<input v-model="receivedOn" type="date" :data-validate-max="record.today || today" :data-validate-min="record.date" data-validate-required aria-required="true"></label></div>
               <button class="btn primary day-receive" type="submit"><Check :size="15" />{{ busy ? t('Salvando...') : record.receivedOn ? t('Atualizar recebimento') : t('Marcar como recebido') }}{{ preview && !busy ? t(' na prévia') : '' }}</button>
             </fieldset>
           </form>

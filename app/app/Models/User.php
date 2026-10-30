@@ -63,6 +63,7 @@ class User extends Authenticatable implements HasLocalePreference
             'entitlements' => [
                 'projects' => $pro ? null : config('billing.free_projects'),
                 'roadmaps_per_project' => $pro ? null : config('billing.free_roadmaps_per_project'),
+                'work_tracking' => $pro,
                 'pay_calculation' => $pro,
                 'ad_free' => $pro,
                 'show_ads' => ! $pro && config('billing.ads_enabled'),

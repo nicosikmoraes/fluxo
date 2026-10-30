@@ -59,7 +59,7 @@ describe("Language selection", () => {
     const fetchMock = vi.fn(); vi.stubGlobal("fetch", fetchMock);
     const wrapper = open(AuthScreen);
     await wrapper.get("#auth-email").setValue("person@example.com");
-    await wrapper.get(".language-select select").setValue("en-US");
+    await wrapper.get('.language-select button[data-locale="en-US"]').trigger("click");
     expect(wrapper.get("h2").text()).toBe("Welcome back");
     expect(wrapper.get("#auth-email").element.value).toBe("person@example.com");
     expect(wrapper.get("#auth-password").attributes("placeholder")).toBe("Your password");
@@ -86,20 +86,20 @@ describe("Language selection", () => {
     let complete;
     vi.stubGlobal("fetch", vi.fn(() => new Promise((resolve) => { complete = resolve; })));
     const wrapper = open(LanguageSelect);
-    await wrapper.get("select").setValue("en-US");
+    await wrapper.get('button[data-locale="en-US"]').trigger("click");
     expect(currentLocale.value).toBe("pt-BR");
-    expect(wrapper.get("select").element.disabled).toBe(true);
+    expect(wrapper.get('button[data-locale="en-US"]').element.disabled).toBe(true);
     complete(respond({ user: { id: 3, name: "Person", locale: "en-US" } })); await flushPromises();
     expect(auth.user.locale).toBe("en-US");
-    expect(wrapper.get("select").element.value).toBe("en-US");
+    expect(wrapper.get('button[data-locale="en-US"]').attributes("aria-pressed")).toBe("true");
   });
   it("keeps the original language after a failed save", async () => {
     auth.user = { id: 3, locale: "pt-BR" };
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(respond({ message: "Falha ao salvar." }, 500)));
     const wrapper = open(LanguageSelect);
-    await wrapper.get("select").setValue("en-US"); await flushPromises();
+    await wrapper.get('button[data-locale="en-US"]').trigger("click"); await flushPromises();
     expect(currentLocale.value).toBe("pt-BR");
-    expect(wrapper.get("select").element.value).toBe("pt-BR");
+    expect(wrapper.get('button[data-locale="pt-BR"]').attributes("aria-pressed")).toBe("true");
     expect(wrapper.get('[role="alert"]').text()).toBe("Falha ao salvar.");
   });
   it("does not restore a signed-out user when a pending preference save finishes", async () => {

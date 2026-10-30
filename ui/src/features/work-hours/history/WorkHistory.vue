@@ -12,6 +12,7 @@ import { dateLabel, duration } from "./history";
 import { useWorkHistory } from "./useWorkHistory";
 import { auth } from "../../auth/auth";
 import { currentLocale, t } from "../../../state/locale";
+import { isValidDate } from "../../../shared/validation";
 
 const props = defineProps({ workHours: { type: Object, required: true } });
 const emit = defineEmits(["register", "saving-change"]);
@@ -41,7 +42,7 @@ const range = computed(() => {
   const end = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + monthOffset.value + 1, 0, 12));
   return { start: start.toISOString().slice(0, 10), end: end.toISOString().slice(0, 10) };
 });
-const invalidRange = computed(() => !range.value.start || !range.value.end || range.value.start > range.value.end || (Date.parse(range.value.end) - Date.parse(range.value.start)) / 86400000 > 365);
+const invalidRange = computed(() => !isValidDate(range.value.start) || !isValidDate(range.value.end) || range.value.start > range.value.end || (Date.parse(range.value.end) - Date.parse(range.value.start)) / 86400000 > 365);
 const history = useWorkHistory(range, invalidRange);
 const { records, summary } = history;
 const settings = computed(() => history.state.data?.settings || profileSettings.value);
@@ -86,7 +87,7 @@ function refreshSelected() {
     <section class="history-period" :aria-label="t('Filtrar período')">
       <div class="history-period-heading"><span class="history-calendar-icon"><CalendarDays :size="20" /></span><div><span class="history-period-caption">{{ t("PERÍODO SELECIONADO") }}</span><strong>{{ period === 'cycle' ? t('Ciclo da empresa') : period === 'month' ? monthTitle : period === 'week' ? t('Esta semana') : t('Período personalizado') }}</strong><small>{{ rangeLabel }}</small></div><div v-if="['month', 'cycle'].includes(period)" class="history-month-arrows"><button :disabled="history.state.saving" :aria-label="t('Período anterior')" @click="monthOffset--"><ChevronLeft :size="16" /></button><button :disabled="history.state.saving" :aria-label="t('Próximo período')" @click="monthOffset++"><ChevronRight :size="16" /></button></div></div>
       <div class="history-period-controls"><label for="history-period">{{ t("Visualizar") }}<select id="history-period" v-model="period" :disabled="history.state.saving"><option v-if="!englishMode" value="cycle">{{ t("Ciclo da empresa") }}</option><option value="month">{{ t("Por mês") }}</option><option value="week">{{ t("Esta semana") }}</option><option value="custom">{{ t("Personalizado") }}</option></select></label><span v-if="!englishMode" class="history-regime"><Clock3 :size="13" />{{ settings.weeklyHours }}{{ t("h / semana") }} <span>·</span> {{ settings.daysPerWeek }} {{ t("dias") }}</span><button class="history-refresh" :disabled="history.state.loading || history.state.saving" :aria-label="t('Atualizar histórico')" @click="history.read"><RefreshCw :size="15" :class="{ spin: history.state.loading }" /></button></div>
-      <div v-if="period === 'custom'" class="history-custom-dates"><label>{{ t("De") }}<input v-model="customStart" :disabled="history.state.saving" type="date" :max="customEnd || undefined"></label><label>{{ t("Até") }}<input v-model="customEnd" :disabled="history.state.saving" type="date" :min="customStart || undefined"></label><p v-if="invalidRange" role="alert">{{ t("Escolha um intervalo de até 366 dias, com a data final igual ou posterior à inicial.") }}</p></div>
+      <div v-if="period === 'custom'" class="history-custom-dates"><label>{{ t("De") }}<input v-model="customStart" :disabled="history.state.saving" type="date"></label><label>{{ t("Até") }}<input v-model="customEnd" :disabled="history.state.saving" type="date"></label><p v-if="invalidRange" role="alert">{{ t("Escolha um intervalo de até 366 dias, com a data final igual ou posterior à inicial.") }}</p></div>
     </section>
 
     <div v-if="history.state.error" class="history-error" role="alert"><p>{{ history.state.error }}</p><button class="text-btn" :disabled="history.state.saving" @click="history.read"><RefreshCw :size="14" /> {{ t("Tentar novamente") }}</button></div>

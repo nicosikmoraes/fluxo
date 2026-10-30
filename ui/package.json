@@ -7,6 +7,7 @@
     "dev": "vite --host 127.0.0.1",
     "build": "vite build",
     "test": "vitest run",
+    "test:billing": "vitest run --config vitest.billing.config.js",
     "test:work-hours": "vitest run --config vitest.work-hours.config.js"
   },
   "dependencies": {

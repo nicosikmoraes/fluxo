@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Project;
+use App\Models\User;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -10,12 +11,53 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Laravel\Cashier\Cashier;
 use Stripe\Exception\ApiErrorException;
+use Stripe\Price;
 
 class BillingController extends Controller
 {
     private function ready(): bool
     {
         return (bool) (config('billing.enabled') && config('billing.pro_price_id') && config('cashier.secret') && config('cashier.webhook.secret'));
+    }
+
+    private function matchesConfiguredPrice(Price $price): bool
+    {
+        $currency = config('billing.currency');
+        $amounts = config('billing.amounts');
+        $options = $price->currency_options;
+        $options = is_array($options) ? $options : ($options?->toArray() ?? []);
+
+        if (! $price->active || $price->currency !== $currency || $price->unit_amount !== $amounts[$currency]
+            || $price->recurring?->interval !== config('billing.interval') || $price->recurring?->interval_count !== 1
+            || count($options) !== count($amounts)) {
+            return false;
+        }
+
+        foreach ($amounts as $currency => $amount) {
+            if (($options[$currency]['unit_amount'] ?? null) !== $amount) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function matchesCheckoutPricing(?array $payload): bool
+    {
+        return ($payload['line_items'][0]['price'] ?? null) === config('billing.pro_price_id')
+            && ($payload['adaptive_pricing']['enabled'] ?? null) === false
+            && ! array_key_exists('currency', $payload ?? []);
+    }
+
+    private function clearCheckout(User $user): void
+    {
+        $user->forceFill([
+            'stripe_checkout_id' => null,
+            'stripe_checkout_url' => null,
+            'stripe_checkout_expires_at' => null,
+            'stripe_checkout_attempt' => null,
+            'stripe_checkout_payload' => null,
+        ])->save();
     }
 
     public function index(Request $request): JsonResponse
@@ -27,7 +69,12 @@ class BillingController extends Controller
             ...$user->billingAccess(),
             'checkout_available' => $this->ready(),
             'portal_available' => (bool) (config('billing.enabled') && config('cashier.secret') && $user->stripe_id),
-            'price' => ['amount' => config('billing.amount'), 'currency' => 'usd', 'interval' => 'month', 'adaptive_pricing' => config('billing.adaptive_pricing')],
+            'price' => [
+                'amount' => config('billing.amounts.'.config('billing.currency')),
+                'currency' => config('billing.currency'),
+                'interval' => config('billing.interval'),
+                'amounts' => config('billing.amounts'),
+            ],
             'usage' => ['projects' => Project::count()],
             'subscription' => $subscription ? ['status' => $subscription->stripe_status, 'ends_at' => $subscription->ends_at?->toIso8601String()] : null,
         ]);
@@ -46,12 +93,17 @@ class BillingController extends Controller
                     $ended = $user->subscriptions()->where('type', 'default')->whereIn('stripe_status', ['canceled', 'incomplete_expired'])->exists();
                     abort_if($session->status === 'complete' && ! $ended, 409, __('Seu pagamento está sendo confirmado. Atualize o plano em instantes.'));
                     if ($session->status === 'open' && $session->expires_at > time()) {
-                        return response()->json(['url' => $session->url]);
+                        if ($this->matchesCheckoutPricing($user->stripe_checkout_payload)) {
+                            return response()->json(['url' => $session->url]);
+                        }
+                        Cashier::stripe()->checkout->sessions->expire($session->id);
                     }
-                    $user->forceFill(['stripe_checkout_id' => null, 'stripe_checkout_attempt' => null, 'stripe_checkout_payload' => null])->save();
+                    $this->clearCheckout($user);
+                } elseif ($user->stripe_checkout_payload && ! $this->matchesCheckoutPricing($user->stripe_checkout_payload)) {
+                    $this->clearCheckout($user);
                 }
-                $price = Cashier::stripe()->prices->retrieve(config('billing.pro_price_id'));
-                abort_unless($price->active && $price->currency === 'usd' && $price->unit_amount === 500 && $price->recurring?->interval === 'month' && $price->recurring?->interval_count === 1, 503, __('O preço da assinatura precisa ser configurado. Tente novamente em breve.'));
+                $price = Cashier::stripe()->prices->retrieve(config('billing.pro_price_id'), ['expand' => ['currency_options']]);
+                abort_unless($this->matchesConfiguredPrice($price), 503, __('O preço da assinatura precisa ser configurado. Tente novamente em breve.'));
                 if (! $user->stripe_checkout_attempt) {
                     $user->forceFill(['stripe_checkout_attempt' => (string) Str::uuid()])->save();
                 }
@@ -64,7 +116,7 @@ class BillingController extends Controller
                     'subscription_data' => ['metadata' => ['type' => 'default']],
                     'client_reference_id' => (string) $user->id,
                     'locale' => $user->locale === 'en-US' ? 'en' : 'pt-BR',
-                    'adaptive_pricing' => ['enabled' => $user->locale !== 'en-US' && (bool) config('billing.adaptive_pricing')],
+                    'adaptive_pricing' => ['enabled' => false],
                     'success_url' => $home.'&checkout=success',
                     'cancel_url' => $home.'&checkout=cancelled',
                     'expires_at' => now()->addMinutes(31)->timestamp,

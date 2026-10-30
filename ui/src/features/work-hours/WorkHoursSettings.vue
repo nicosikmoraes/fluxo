@@ -1,5 +1,6 @@
 <script setup>
-import { computed, ref } from "vue";
+import { vValidate } from "../../shared/validation";
+import { computed, ref, watch } from "vue";
 import { ArrowRight, Check, CheckCircle2, Clock3, Coffee, Info, LogIn, LogOut, ShieldCheck, Sparkles, TrendingUp, Wallet, X } from "@lucide/vue";
 import { calculateWorkDay, formatWorkDuration, formatWorkMoney, formatWorkTime, getWorkTimeline, isWorkWeekend, payrollCycle, validateWorkSettings, workSteps } from "./workHours";
 import { currentLocale, t } from "../../state/locale";
@@ -22,7 +23,10 @@ const attemptedSave = ref(false);
 const englishMode = computed(() => currentLocale.value === "en-US");
 const showPause = ref(false);
 const weekend = computed(() => isWorkWeekend(props.date));
-const visibleSteps = computed(() => workSteps.filter((step) => englishMode.value || !weekend.value || showPause.value || props.entries.lunchOut || props.entries.lunchIn || !["lunchOut", "lunchIn"].includes(step.key)));
+const visibleSteps = workSteps.filter((step) => ["startedAt", "finishedAt"].includes(step.key));
+const hasPrimaryPause = computed(() => showPause.value || !!props.entries.lunchOut || !!props.entries.lunchIn);
+const canAddPause = computed(() => !hasPrimaryPause.value || props.entries.lunchOut && props.entries.lunchIn && props.extraBreaks.every((pause) => pause.startedAt && pause.finishedAt) && props.extraBreaks.length < 30);
+watch(() => props.date, () => { showPause.value = false; });
 const cycle = computed(() => payrollCycle(props.date, props.settings.cycleClosingDay || 31));
 const cycleOpeningDay = computed(() => Number(props.settings.cycleClosingDay || 31) === 31 ? 1 : Number(props.settings.cycleClosingDay) + 1);
 const normalizedEntries = computed(() => Object.fromEntries(workSteps.map(({ key }) => [key, normalizeTime(props.entries[key])])));
@@ -31,7 +35,7 @@ const errors = computed(() => attemptedSave.value ? validateWorkSettings({ ...pr
 const entriesError = computed(() => getWorkTimeline(normalizedEntries.value, { allowEqual: props.allowEqualTimes, date: props.date, additionalBreaks: props.extraBreaks }).error);
 const salaryProvided = computed(() => props.settings.monthlySalary !== "" && props.settings.monthlySalary != null);
 const stepIcons = [LogIn, Coffee, ArrowRight, LogOut];
-const nextStep = computed(() => props.entries.finishedAt ? null : !props.entries.startedAt ? workSteps[0] : props.entries.lunchOut && !props.entries.lunchIn ? workSteps[2] : !englishMode.value && weekend.value && !showPause.value ? workSteps[3] : !props.entries.lunchOut ? workSteps[1] : workSteps[3]);
+const nextStep = computed(() => props.entries.finishedAt ? null : !props.entries.startedAt ? workSteps[0] : workSteps[3]);
 const dateValue = computed(() => new Date(`${props.date}T12:00:00Z`));
 const shortDate = computed(() => new Intl.DateTimeFormat(currentLocale.value, { timeZone: "UTC", day: "2-digit", month: "short" }).format(dateValue.value).replace("de ", "").replace(".", "").toUpperCase());
 const weekDay = computed(() => new Intl.DateTimeFormat(currentLocale.value, { timeZone: "UTC", weekday: "long" }).format(dateValue.value).toUpperCase());
@@ -67,7 +71,18 @@ function updatePause(index, key, value) {
 }
 
 function addPause() {
+  if (!hasPrimaryPause.value) {
+    showPause.value = true;
+    return;
+  }
   emit("update:extraBreaks", [...props.extraBreaks, { startedAt: "", finishedAt: "" }]);
+}
+
+function removePrimaryPause() {
+  const next = props.extraBreaks[0];
+  emit("update:entries", { ...props.entries, lunchOut: next?.startedAt || "", lunchIn: next?.finishedAt || "" });
+  if (next) emit("update:extraBreaks", props.extraBreaks.slice(1));
+  showPause.value = false;
 }
 
 function skipTimeSeparator(event) {
@@ -120,7 +135,7 @@ function save() {
           <div class="work-field-grid">
             <div class="work-field">
               <label for="work-weekly">{{ t("Jornada semanal") }}</label>
-              <div class="work-input-unit"><input id="work-weekly" type="number" min="0.5" max="168" step="0.5" :value="settings.weeklyHours" :aria-invalid="Boolean(errors.weeklyHours)" :aria-describedby="errors.weeklyHours ? 'work-weekly-error' : undefined" @input="updateSetting('weeklyHours', $event.target.value)"><span>{{ t("horas / semana") }}</span></div>
+              <div class="work-input-unit"><input id="work-weekly" type="number" step="any" :value="settings.weeklyHours" :aria-invalid="Boolean(errors.weeklyHours)" :aria-describedby="errors.weeklyHours ? 'work-weekly-error' : undefined" @input="updateSetting('weeklyHours', $event.target.value)"><span>{{ t("horas / semana") }}</span></div>
               <p v-if="errors.weeklyHours" id="work-weekly-error" class="work-field-error">{{ errors.weeklyHours }}</p>
             </div>
             <div class="work-field">
@@ -134,7 +149,7 @@ function save() {
             <div><small>{{ t("SUA JORNADA DIÁRIA") }}</small><strong>{{ day.valid ? formatWorkDuration(Number(settings.weeklyHours) * 3600 / Number(settings.daysPerWeek)) : '—' }} <span>{{ t("de trabalho por dia") }}</span></strong></div>
             <span class="work-daily-equation">{{ settings.weeklyHours || '—' }}h ÷ {{ settings.daysPerWeek }} {{ t("dias") }}</span>
           </div>
-          <p class="work-helper"><Coffee :size="13" /> {{ t("A pausa para o almoço fica fora desse cálculo.") }}</p>
+          <p class="work-helper"><Coffee :size="13" /> {{ t("As pausas são opcionais e ficam fora das horas trabalhadas.") }}</p>
         </fieldset>
 
         <fieldset v-if="!englishMode && canCalculatePay" class="work-card" :disabled="!settings.enabled || saving">
@@ -142,12 +157,12 @@ function save() {
           <header class="work-card-heading"><span class="work-step-number mint"><Wallet :size="16" /></span><div><h3>{{ t("Seu tempo extra também tem valor.") }}</h3><p>{{ t("Adicione o salário para ver uma estimativa em reais.") }}</p></div><span class="work-optional">{{ t("OPCIONAL") }}</span></header>
           <div class="work-field">
             <label for="work-salary">{{ t("Salário bruto mensal") }} <span>{{ t("opcional") }}</span></label>
-            <div class="work-input-unit prefix"><span>R$</span><input id="work-salary" type="number" min="0.01" step="0.01" :placeholder="t('Adicionar meu salário')" :value="settings.monthlySalary" :aria-invalid="Boolean(errors.monthlySalary)" @input="updateSetting('monthlySalary', $event.target.value)"></div>
+            <div class="work-input-unit prefix"><span>R$</span><input id="work-salary" type="number" step="any" :placeholder="t('Adicionar meu salário')" :value="settings.monthlySalary" :aria-invalid="Boolean(errors.monthlySalary)" @input="updateSetting('monthlySalary', $event.target.value)"></div>
             <p v-if="errors.monthlySalary" class="work-field-error">{{ errors.monthlySalary }}</p>
           </div>
           <div v-if="salaryProvided" class="work-field-grid work-rate-fields">
-            <div class="work-field"><label for="work-monthly">{{ t("Base de horas mensais") }}</label><div class="work-input-unit"><input id="work-monthly" type="number" min="1" step="1" :value="settings.monthlyHours" :aria-invalid="Boolean(errors.monthlyHours)" @input="updateSetting('monthlyHours', $event.target.value)"><span>{{ t("horas") }}</span></div><p v-if="errors.monthlyHours" class="work-field-error">{{ errors.monthlyHours }}</p></div>
-            <div class="work-field"><label for="work-premium">{{ t("Adicional da hora extra") }}</label><div class="work-input-unit"><input id="work-premium" type="number" min="0" step="1" :value="settings.overtimePremium" :aria-invalid="Boolean(errors.overtimePremium)" @input="updateSetting('overtimePremium', $event.target.value)"><span>%</span></div><p v-if="errors.overtimePremium" class="work-field-error">{{ errors.overtimePremium }}</p></div>
+            <div class="work-field"><label for="work-monthly">{{ t("Base de horas mensais") }}</label><div class="work-input-unit"><input id="work-monthly" type="number" step="any" :value="settings.monthlyHours" :aria-invalid="Boolean(errors.monthlyHours)" @input="updateSetting('monthlyHours', $event.target.value)"><span>{{ t("horas") }}</span></div><p v-if="errors.monthlyHours" class="work-field-error">{{ errors.monthlyHours }}</p></div>
+            <div class="work-field"><label for="work-premium">{{ t("Adicional da hora extra") }}</label><div class="work-input-unit"><input id="work-premium" type="number" step="any" :value="settings.overtimePremium" :aria-invalid="Boolean(errors.overtimePremium)" @input="updateSetting('overtimePremium', $event.target.value)"><span>%</span></div><p v-if="errors.overtimePremium" class="work-field-error">{{ errors.overtimePremium }}</p></div>
           </div>
           <div v-if="salaryProvided && day.valid" class="work-rate-summary"><TrendingUp :size="15" /><span>{{ t("Hora normal") }} <b>{{ formatWorkMoney(day.hourlyRate) }}</b></span><span class="work-rate-arrow">→</span><span>{{ t("Hora extra") }} <b>{{ formatWorkMoney(day.overtimeRate) }}</b></span></div>
           <p v-if="salaryProvided" class="work-helper rate-helper"><Info :size="13" /> {{ t("Ajuste a base mensal e o adicional conforme seu contrato. O valor é uma estimativa bruta, sem descontos.") }}</p>
@@ -159,7 +174,7 @@ function save() {
           <header class="work-card-heading"><span class="work-step-number mint"><Wallet :size="16" /></span><div><h3>Your hourly pay</h3><p>Set your rate to estimate your pay while you track time.</p></div><span class="work-optional">OPTIONAL</span></header>
           <div class="work-field">
             <label for="work-hourly-rate">Hourly rate <span>optional</span></label>
-            <div class="work-input-unit prefix"><span>$</span><input id="work-hourly-rate" type="number" min="0.01" step="0.01" placeholder="Enter your hourly rate" :value="settings.hourlyRate" :aria-invalid="Boolean(errors.hourlyRate)" @input="updateSetting('hourlyRate', $event.target.value)"></div>
+            <div class="work-input-unit prefix"><span>$</span><input id="work-hourly-rate" type="number" step="any" placeholder="Enter your hourly rate" :value="settings.hourlyRate" :aria-invalid="Boolean(errors.hourlyRate)" @input="updateSetting('hourlyRate', $event.target.value)"></div>
             <p v-if="errors.hourlyRate" class="work-field-error">{{ errors.hourlyRate }}</p>
           </div>
           <div v-if="settings.hourlyRate && day.valid" class="work-rate-summary"><Clock3 :size="15" /><span>Hourly rate <b>{{ formatWorkMoney(Number(settings.hourlyRate)) }}</b></span><span class="work-rate-arrow">·</span><span>Pay earned today <b>{{ formatWorkMoney(Number(settings.hourlyRate) * day.workedSeconds / 3600) }}</b></span></div>
@@ -187,24 +202,27 @@ function save() {
         <fieldset class="work-card work-today" :disabled="!settings.enabled || saving">
           <legend class="work-sr-only">{{ t("Registros da jornada de hoje") }}</legend>
           <header class="work-today-heading"><div><span class="work-small-label">{{ t("SEU DIA DE TRABALHO") }}</span><h3>{{ t("Um registro de cada vez.") }}</h3></div><span class="work-today-date">{{ shortDate }} <small>{{ weekDay }}</small></span></header>
-          <div v-if="editableDate" class="work-date-picker"><label for="work-date">{{ t("Data da jornada") }}</label><input id="work-date" type="date" :value="date" :max="maxDate" :disabled="saving" @change="selectDate"></div>
+          <div v-if="editableDate" class="work-date-picker"><label for="work-date">{{ t("Data da jornada") }}</label><input id="work-date" v-validate data-validate-required aria-required="true" type="date" :value="date" :data-validate-max="maxDate" :disabled="saving" @change="selectDate"></div>
           <button v-if="canRecordNow && nextStep" type="button" class="work-record-now" :disabled="saving" @click="emit('record', nextStep.key)"><Clock3 :size="14" />{{ t(recordLabels[nextStep.key]) }}</button>
           <p v-if="weekend && !englishMode" class="work-helper">{{ dateValue.getUTCDay() === 0 ? t('Domingo: adicional de 100%.') : t('Sábado: todas as horas são extras.') }} {{ t("A pausa é opcional.") }}</p>
-          <button v-if="!englishMode && weekend && !showPause && !entries.lunchOut && !entries.lunchIn" type="button" class="work-record-now" @click="showPause = true">{{ t("Adicionar uma pausa") }}</button>
           <div class="work-time-list">
             <div v-for="(step, index) in visibleSteps" :key="step.key" class="work-time-row" :class="{ recorded: entries[step.key] }">
               <div class="work-time-label"><span class="work-time-icon"><component :is="stepIcons[workSteps.indexOf(step)]" :size="14" /></span><label :for="'work-' + step.key"><strong>{{ t(step.label) }}</strong></label></div>
               <div class="work-time-control">
-                <input :id="'work-' + step.key" type="text" inputmode="numeric" maxlength="5" placeholder="HH:mm" autocomplete="off" spellcheck="false" aria-describedby="work-time-help" :value="entries[step.key]" :disabled="step.key !== 'startedAt' && !entries.startedAt" @focus="$event.target.select()" @keydown="skipTimeSeparator" @input="maskTime(step.key, $event)" @blur="updateEntry(step.key, normalizeTime($event.target.value))">
+                <input :id="'work-' + step.key" type="text" inputmode="numeric" placeholder="HH:mm" autocomplete="off" spellcheck="false" aria-describedby="work-time-help" :value="entries[step.key]" :disabled="step.key !== 'startedAt' && !entries.startedAt" @focus="$event.target.select()" @keydown="skipTimeSeparator" @input="maskTime(step.key, $event)" @blur="updateEntry(step.key, normalizeTime($event.target.value))">
                 <button v-if="entries[step.key]" type="button" class="work-time-clear" :aria-label="t('Limpar {field}', { field: t(step.label).toLocaleLowerCase(currentLocale) })" :title="t('Limpar {field}', { field: t(step.label).toLocaleLowerCase(currentLocale) })" @click="updateEntry(step.key, '')"><X :size="13" /></button>
               </div>
             </div>
           </div>
-          <div v-for="(pause, index) in extraBreaks" :key="index" class="work-extra-pause">
-            <div class="work-extra-heading"><strong>{{ t("Pausa") }} {{ index + 2 }}</strong><button type="button" :aria-label="t('Remover pausa ') + (index + 2)" @click="emit('update:extraBreaks', extraBreaks.filter((_, item) => item !== index))"><X :size="14" /></button></div>
-            <div class="work-field-grid"><div v-for="field in [{ key: 'startedAt', label: t('Início') }, { key: 'finishedAt', label: t('Retorno') }]" :key="field.key" class="work-field"><label :for="'pause-' + index + field.key">{{ field.label }}</label><input :id="'pause-' + index + field.key" class="work-pause-input" type="text" inputmode="numeric" maxlength="5" placeholder="HH:mm" :value="pause[field.key]" @keydown="skipTimeSeparator" @input="maskTime(field.key, $event, index)" @blur="updatePause(index, field.key, normalizeTime($event.target.value))"></div></div>
+          <div v-if="hasPrimaryPause" class="work-extra-pause">
+            <div class="work-extra-heading"><strong>{{ t("Pausa") }} 1</strong><button type="button" :aria-label="t('Remover pausa {number}', { number: 1 })" @click="removePrimaryPause"><X :size="14" /></button></div>
+            <div class="work-field-grid"><div v-for="field in [{ key: 'lunchOut', label: 'Início da pausa {number}' }, { key: 'lunchIn', label: 'Retorno da pausa {number}' }]" :key="field.key" class="work-field"><label :for="'work-' + field.key">{{ t(field.label, { number: 1 }) }}</label><input :id="'work-' + field.key" class="work-pause-input" type="text" inputmode="numeric" placeholder="HH:mm" :value="entries[field.key]" :disabled="!entries.startedAt" @keydown="skipTimeSeparator" @input="maskTime(field.key, $event)" @blur="updateEntry(field.key, normalizeTime($event.target.value))"></div></div>
           </div>
-          <button v-if="entries.lunchIn && extraBreaks.length < 30" type="button" class="work-record-now" @click="addPause">{{ t("Adicionar outra pausa") }}</button>
+          <div v-for="(pause, index) in extraBreaks" :key="index" class="work-extra-pause">
+            <div class="work-extra-heading"><strong>{{ t("Pausa") }} {{ index + 2 }}</strong><button type="button" :aria-label="t('Remover pausa {number}', { number: index + 2 })" @click="emit('update:extraBreaks', extraBreaks.filter((_, item) => item !== index))"><X :size="14" /></button></div>
+            <div class="work-field-grid"><div v-for="field in [{ key: 'startedAt', label: t('Início') }, { key: 'finishedAt', label: t('Retorno') }]" :key="field.key" class="work-field"><label :for="'pause-' + index + field.key">{{ field.label }}</label><input :id="'pause-' + index + field.key" class="work-pause-input" type="text" inputmode="numeric" placeholder="HH:mm" :value="pause[field.key]" @keydown="skipTimeSeparator" @input="maskTime(field.key, $event, index)" @blur="updatePause(index, field.key, normalizeTime($event.target.value))"></div></div>
+          </div>
+          <button v-if="canAddPause" type="button" class="work-record-now" :disabled="!entries.startedAt" @click="addPause"><Coffee :size="14" /> {{ t(hasPrimaryPause ? "Adicionar outra pausa" : "Adicionar uma pausa") }}</button>
           <p id="work-time-help" class="work-helper work-time-help">{{ t("Digite os quatro números: 0830 vira 08:30. Deixe a saída em branco enquanto estiver trabalhando.") }}</p>
           <p v-if="entriesError" class="work-field-error" role="alert">{{ entriesError }}</p>
           <div v-if="!englishMode && day.valid && day.returned && !weekend" class="work-departure-summary"><Clock3 :size="17" /><span>{{ t("Saída prevista") }} <strong>{{ formatWorkTime(day.departureMinutes) }}<small v-if="day.departureNextDay"> {{ t("· dia seguinte") }}</small></strong></span><CheckCircle2 :size="16" /></div>

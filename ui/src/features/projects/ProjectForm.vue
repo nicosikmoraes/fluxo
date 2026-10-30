@@ -1,4 +1,5 @@
 <script setup>
+import { vValidate } from "../../shared/validation";
 import { t } from "../../state/locale";
 import { computed, reactive, ref } from "vue";
 import { ImagePlus, Check, X } from "@lucide/vue";
@@ -25,8 +26,8 @@ async function save() {
 <template>
  <Modal :title="project ? t('Editar projeto') : t('Novo projeto')" @close="emit('close')">
   <p v-if="atLimit" role="status">{{ t("Você atingiu o limite de 3 projetos do plano gratuito.") }} <button class="text-btn" @click="emit('upgrade')">{{ t("Conhecer Fluxo Pro") }}</button></p>
-  <form class="form-stack" @submit.prevent="save">
-   <label>{{ t("Nome do projeto") }} <span class="required">*</span><input v-model="form.title" autofocus required maxlength="160" :placeholder="t('Dê um nome à sua próxima ideia')"></label>
+  <form v-validate novalidate class="form-stack" @submit.prevent="save">
+   <label>{{ t("Nome do projeto") }} <span class="required">*</span><input v-model="form.title" autofocus data-validate-required aria-required="true" data-validate-maxlength="160" :placeholder="t('Dê um nome à sua próxima ideia')"></label>
    <label>{{ t("Escolha uma capa") }}</label>
    <div class="cover-options"><button v-for="c in covers" :key="c.id" type="button" class="cover-option" :class="{selected:form.cover===c.id && !form.cover_path}" @click="form.cover=c.id;form.cover_path=null"><div class="cover-art" :class="c.id"><img src="/ui/hero.png" alt=""><Check v-if="form.cover===c.id && !form.cover_path" :size="18" /></div><span>{{ t(c.name) }}</span></button></div>
    <div v-if="form.cover_path" class="upload-preview"><img :src="form.cover_path" :alt="t('Capa do projeto')"><button type="button" class="icon-btn" :aria-label="t('Remover imagem')" @click="form.cover_path=null"><X :size="16" /></button></div>
