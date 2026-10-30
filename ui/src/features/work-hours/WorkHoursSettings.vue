@@ -222,7 +222,7 @@ function save() {
             <div class="work-extra-heading"><strong>{{ t("Pausa") }} {{ index + 2 }}</strong><button type="button" :aria-label="t('Remover pausa {number}', { number: index + 2 })" @click="emit('update:extraBreaks', extraBreaks.filter((_, item) => item !== index))"><X :size="14" /></button></div>
             <div class="work-field-grid"><div v-for="field in [{ key: 'startedAt', label: t('Início') }, { key: 'finishedAt', label: t('Retorno') }]" :key="field.key" class="work-field"><label :for="'pause-' + index + field.key">{{ field.label }}</label><input :id="'pause-' + index + field.key" class="work-pause-input" type="text" inputmode="numeric" placeholder="HH:mm" :value="pause[field.key]" @keydown="skipTimeSeparator" @input="maskTime(field.key, $event, index)" @blur="updatePause(index, field.key, normalizeTime($event.target.value))"></div></div>
           </div>
-          <button v-if="canAddPause" type="button" class="work-record-now" :disabled="!entries.startedAt" @click="addPause"><Coffee :size="14" /> {{ t(hasPrimaryPause ? "Adicionar outra pausa" : "Adicionar uma pausa") }}</button>
+          <button v-if="canAddPause" type="button" class="work-record-now work-add-pause" :disabled="!entries.startedAt" @click="addPause"><Coffee :size="14" /> {{ t(hasPrimaryPause ? "Adicionar outra pausa" : "Adicionar uma pausa") }}</button>
           <p id="work-time-help" class="work-helper work-time-help">{{ t("Digite os quatro números: 0830 vira 08:30. Deixe a saída em branco enquanto estiver trabalhando.") }}</p>
           <p v-if="entriesError" class="work-field-error" role="alert">{{ entriesError }}</p>
           <div v-if="!englishMode && day.valid && day.returned && !weekend" class="work-departure-summary"><Clock3 :size="17" /><span>{{ t("Saída prevista") }} <strong>{{ formatWorkTime(day.departureMinutes) }}<small v-if="day.departureNextDay"> {{ t("· dia seguinte") }}</small></strong></span><CheckCircle2 :size="16" /></div>
@@ -609,6 +609,9 @@ function save() {
   color: var(--theme-text-muted, #7b95cf);
   font-size: 10px;
   margin: 0 0 23px;
+}
+.work-add-pause {
+  margin-top: 16px;
 }
 .work-time-list {
   display: grid;
