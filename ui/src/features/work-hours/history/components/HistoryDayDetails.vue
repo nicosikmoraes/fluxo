@@ -1,10 +1,14 @@
 <script setup>
-import { onBeforeUnmount, onMounted, ref } from "vue";
+import { vValidate } from "../../../../shared/validation";
+import { t } from "../../../../state/locale";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { X, Clock3, Check, Wallet, Info } from "@lucide/vue";
 import { dateLabel, duration, money } from "../history";
 const props = defineProps({
+  canCalculatePay: { type: Boolean, default: true },
   record: { type: Object, required: true },
   today: { type: String, required: true },
+  englishMode: { type: Boolean, default: false },
   preview: { type: Boolean, default: false },
   busy: { type: Boolean, default: false },
   error: { type: String, default: "" },
@@ -15,7 +19,9 @@ const received = ref(props.record.receivedOn ? props.record.received : props.rec
 const receivedOn = ref(props.record.receivedOn || props.today);
 const entryVersion = props.record.version;
 const receiptVersion = props.record.receiptVersion;
-const steps = [{ key: "startedAt", label: "Entrada" }, { key: "lunchOut", label: "Início da pausa" }, { key: "lunchIn", label: "Retorno da pausa" }, { key: "finishedAt", label: "Saída do trabalho" }];
+const steps = computed(() => props.englishMode
+  ? [{ key: "startedAt", label: "Start" }, { key: "lunchOut", label: "Break started" }, { key: "lunchIn", label: "Break ended" }, { key: "finishedAt", label: "Finish" }]
+  : [{ key: "startedAt", label: t("Entrada") }, { key: "lunchOut", label: t("Início da pausa") }, { key: "lunchIn", label: t("Retorno da pausa") }, { key: "finishedAt", label: t("Saída do trabalho") }]);
 onMounted(() => dialog.value.showModal());
 onBeforeUnmount(() => dialog.value?.close());
 function saveReceipt() {
@@ -33,34 +39,38 @@ function close() {
 
 <template>
   <dialog ref="dialog" class="day-dialog" aria-labelledby="history-day-title" :aria-busy="busy" @cancel.prevent="close" @click="($event.target === dialog) && close()">
-    <header><div><span>DETALHES DA JORNADA</span><h2 id="history-day-title">{{ dateLabel(record.date, { day: 'numeric', month: 'long' }) }}</h2><p>{{ dateLabel(record.date, { weekday: 'long', day: undefined, month: undefined }) }} · {{ record.status === 'complete' ? 'Jornada encerrada' : record.status === 'ongoing' ? 'Em andamento' : 'Registro incompleto' }}</p></div><button class="day-close" :disabled="busy" aria-label="Fechar detalhes do dia" @click="close"><X :size="19" /></button></header>
+    <header><div><span>{{ englishMode ? 'WORKDAY DETAILS' : t('DETALHES DA JORNADA') }}</span><h2 id="history-day-title">{{ dateLabel(record.date, { day: 'numeric', month: 'long' }) }}</h2><p>{{ dateLabel(record.date, { weekday: 'long', day: undefined, month: undefined }) }} · {{ englishMode ? (record.status === 'complete' ? 'Workday complete' : record.status === 'ongoing' ? 'In progress' : 'Incomplete record') : (record.status === 'complete' ? t('Jornada encerrada') : record.status === 'ongoing' ? t('Em andamento') : t('Registro incompleto')) }}</p></div><button class="day-close" :disabled="busy" :aria-label="englishMode ? 'Close day details' : t('Fechar detalhes do dia')" @click="close"><X :size="19" /></button></header>
     <div class="day-dialog-content">
-      <div class="day-totals"><div><span>Trabalhadas{{ record.status !== 'complete' ? ' · parcial' : '' }}</span><strong>{{ duration(record.worked) }}</strong></div><div><span>Horas extras</span><strong class="day-extra">{{ duration(record.overtime) }}</strong></div></div>
-      <div class="day-timeline"><div v-for="step in steps.filter((step) => !['lunchOut', 'lunchIn'].includes(step.key) || record.lunchOut)" :key="step.key"><span class="day-timeline-dot" :class="{ missing: !record[step.key] }"></span><span>{{ step.label }}</span><strong>{{ record[step.key] || 'Não registrada' }}</strong></div></div>
-      <div v-for="(pause, index) in (record.breaks || []).slice(1)" :key="index" class="day-rate">Pausa {{ index + 2 }}: {{ pause.startTime }} – {{ pause.endTime || 'em andamento' }}</div>
-      <button v-if="!preview" class="day-edit-hours" :disabled="busy" @click="emit('edit', record.date)">Editar horários deste dia</button>
-      <p class="day-regime"><Clock3 :size="14" /> {{ record.target === 0 ? 'Todas as horas contam como extras' : 'Meta de ' + duration(record.target) }}<template v-if="record.regime"> · semana de {{ record.regime.weeklyHours }}h em {{ record.regime.daysPerWeek }} dias</template></p>
-      <p v-if="record.timezone" class="day-rate">Horários em {{ record.timezone.replaceAll('_', ' ') }}.</p>
-      <section class="day-payment">
-        <header><Wallet :size="17" /><h3>Recebimento das horas extras</h3></header>
-        <div v-if="error" class="day-receipt-error" role="alert"><p>{{ error }}</p><button type="button" :disabled="busy" @click="emit('refresh')">Atualizar jornada</button></div>
+      <div class="day-totals" :class="{ 'day-totals-hourly': englishMode }"><div><span>{{ englishMode ? 'Hours worked' : t('Trabalhadas') }}{{ record.status !== 'complete' ? (englishMode ? ' · partial' : ' · parcial') : '' }}</span><strong>{{ duration(record.worked) }}</strong></div><div v-if="!englishMode"><span>{{ t("Horas extras") }}</span><strong class="day-extra">{{ duration(record.overtime) }}</strong></div></div>
+      <div class="day-timeline"><div v-for="step in steps.filter((step) => !['lunchOut', 'lunchIn'].includes(step.key) || record.lunchOut)" :key="step.key"><span class="day-timeline-dot" :class="{ missing: !record[step.key] }"></span><span>{{ step.label }}</span><strong>{{ record[step.key] || (englishMode ? 'Not recorded' : t('Não registrada')) }}</strong></div></div>
+      <div v-for="(pause, index) in (record.breaks || []).slice(1)" :key="index" class="day-rate">{{ t("Pausa") }} {{ index + 2 }}: {{ pause.startTime }} – {{ pause.endTime || t('em andamento') }}</div>
+      <button v-if="!preview" class="day-edit-hours" :disabled="busy" @click="emit('edit', record.date)">{{ englishMode ? 'Edit this day’s hours' : t('Editar horários deste dia') }}</button>
+      <p v-if="!englishMode" class="day-regime"><Clock3 :size="14" /> {{ record.target === 0 ? t('Todas as horas contam como extras') : t('Meta de ') + duration(record.target) }}<template v-if="record.regime"> {{ t("· semana de") }} {{ record.regime.weeklyHours }}{{ t("h em") }} {{ record.regime.daysPerWeek }} {{ t("dias") }}</template></p>
+      <p v-if="record.timezone" class="day-rate">{{ englishMode ? 'Times shown in' : t('Horários em') }} {{ record.timezone.replaceAll('_', ' ') }}.</p>
+      <section v-if="englishMode && canCalculatePay" class="day-payment">
+        <header><Wallet :size="17" /><h3>Hourly pay</h3></header>
+        <div class="day-estimate"><span>{{ record.regime?.hourlyRate ? `${money(record.regime.hourlyRate)} per hour` : 'Set an hourly rate in work settings to estimate pay.' }}</span><strong>{{ money(record.hourlyEarnings) }}</strong></div>
+      </section>
+      <section v-else-if="canCalculatePay" class="day-payment">
+        <header><Wallet :size="17" /><h3>{{ t("Recebimento das horas extras") }}</h3></header>
+        <div v-if="error" class="day-receipt-error" role="alert"><p>{{ error }}</p><button type="button" :disabled="busy" @click="emit('refresh')">{{ t("Atualizar jornada") }}</button></div>
         <template v-if="record.overtime || record.receivedOn">
-          <div class="day-estimate"><span>Estimativa bruta deste dia</span><strong>{{ money(record.estimated) }}</strong></div>
-          <div v-if="record.overtimeRate != null"><p v-for="(part, index) in record.overtimeBreakdown" :key="index" class="day-rate">{{ duration(part.seconds / 60) }} com adicional de {{ part.premium }}% · {{ money(Number(record.regime.monthlySalary) / Number(record.regime.monthlyHours) * (1 + part.premium / 100)) }} / hora</p></div>
-          <p v-else class="day-rate">Sem salário registrado neste dia. Você pode informar o valor que recebeu pelas horas extras.</p>
-          <p v-if="record.receivedOn" class="day-received-info">Recebido: {{ money(record.received) }} em {{ dateLabel(record.receivedOn, { year: 'numeric' }) }}.</p>
-          <form v-if="record.status === 'complete' || preview" @submit.prevent="saveReceipt">
+          <div class="day-estimate"><span>{{ t("Estimativa bruta deste dia") }}</span><strong>{{ money(record.estimated) }}</strong></div>
+          <div v-if="record.overtimeRate != null"><p v-for="(part, index) in record.overtimeBreakdown" :key="index" class="day-rate">{{ duration(part.seconds / 60) }} {{ t("com adicional de") }} {{ part.premium }}% · {{ money(Number(record.regime.monthlySalary) / Number(record.regime.monthlyHours) * (1 + part.premium / 100)) }} {{ t("/ hora") }}</p></div>
+          <p v-else class="day-rate">{{ t("Sem salário registrado neste dia. Você pode informar o valor que recebeu pelas horas extras.") }}</p>
+          <p v-if="record.receivedOn" class="day-received-info">{{ t("Recebido:") }} {{ money(record.received) }} {{ t("em") }} {{ dateLabel(record.receivedOn, { year: 'numeric' }) }}.</p>
+          <form v-validate novalidate v-if="record.status === 'complete' || preview" @submit.prevent="saveReceipt">
             <fieldset :disabled="busy || !record.overtime" class="day-receipt-form">
-              <div class="day-receipt-fields"><label>Valor recebido<div class="day-currency"><span>R$</span><input v-model="received" aria-label="Valor recebido" type="number" step="0.01" min="0.01" max="999999999" required></div></label><label>Data do recebimento<input v-model="receivedOn" type="date" :max="record.today || today" :min="record.date" required></label></div>
-              <button class="btn primary day-receive" type="submit"><Check :size="15" />{{ busy ? 'Salvando...' : record.receivedOn ? 'Atualizar recebimento' : 'Marcar como recebido' }}{{ preview && !busy ? ' na prévia' : '' }}</button>
+              <div class="day-receipt-fields"><label>{{ t("Valor recebido") }}<div class="day-currency"><span>R$</span><input v-model="received" :aria-label="t('Valor recebido')" type="number" step="any" data-validate-money data-validate-min="0.01" data-validate-max="999999999" data-validate-required aria-required="true"></div></label><label>{{ t("Data do recebimento") }}<input v-model="receivedOn" type="date" :data-validate-max="record.today || today" :data-validate-min="record.date" data-validate-required aria-required="true"></label></div>
+              <button class="btn primary day-receive" type="submit"><Check :size="15" />{{ busy ? t('Salvando...') : record.receivedOn ? t('Atualizar recebimento') : t('Marcar como recebido') }}{{ preview && !busy ? t(' na prévia') : '' }}</button>
             </fieldset>
           </form>
-          <p v-else class="day-no-extra">Encerre a jornada para registrar o recebimento.</p>
-          <button v-if="record.receivedOn" :disabled="busy" class="day-clear-receipt" type="button" @click="clearReceipt">Limpar recebimento</button>
+          <p v-else class="day-no-extra">{{ t("Encerre a jornada para registrar o recebimento.") }}</p>
+          <button v-if="record.receivedOn" :disabled="busy" class="day-clear-receipt" type="button" @click="clearReceipt">{{ t("Limpar recebimento") }}</button>
         </template>
-        <p v-else class="day-no-extra">Este dia ainda não tem horas extras para receber.</p>
+        <p v-else class="day-no-extra">{{ t("Este dia ainda não tem horas extras para receber.") }}</p>
       </section>
-      <p class="day-demo-note"><Info :size="14" /> {{ preview ? 'Esta é uma simulação. Alterações ficam apenas nesta prévia.' : 'O valor estimado é bruto. Registre o valor efetivamente recebido para acompanhar seus pagamentos.' }}</p>
+      <p class="day-demo-note"><Info :size="14" /> {{ englishMode ? (preview ? 'This is a preview. Changes will not be saved.' : 'This pay estimate is based on your recorded hours.') : (preview ? t('Esta é uma simulação. Alterações ficam apenas nesta prévia.') : t('O valor estimado é bruto. Registre o valor efetivamente recebido para acompanhar seus pagamentos.')) }}</p>
     </div>
   </dialog>
 </template>
@@ -127,6 +137,9 @@ header p {
   background: var(--theme-panel, #f8faff);
   padding: 17px;
   border-radius: 11px;
+}
+.day-totals-hourly {
+  grid-template-columns: 1fr;
 }
 .day-totals span {
   font-size: 9px;

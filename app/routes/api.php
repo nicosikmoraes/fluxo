@@ -1,12 +1,15 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BillingController;
 use App\Http\Controllers\DailyListController as D;
+use App\Http\Controllers\ProfilePreferenceController;
 use App\Http\Controllers\RoadmapController as R;
 use App\Http\Controllers\WhiteboardController;
 use App\Http\Controllers\WorkHistoryController;
 use App\Http\Controllers\WorkHoursController;
 use App\Http\Controllers\WorkspaceController as W;
+use App\Http\Middleware\EnsureWorkTrackingSubscription;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/auth/session', [AuthController::class, 'session']);
@@ -16,7 +19,11 @@ Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword'])-
 Route::post('/auth/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:password-recovery');
 
 Route::middleware(['auth', 'auth.session'])->group(function (): void {
+    Route::get('/billing', [BillingController::class, 'index']);
+    Route::post('/billing/checkout', [BillingController::class, 'checkout'])->middleware('throttle:10,1');
+    Route::post('/billing/portal', [BillingController::class, 'portal'])->middleware('throttle:10,1');
     Route::post('/auth/logout', [AuthController::class, 'logout']);
+    Route::put('/profile/preferences', [ProfilePreferenceController::class, 'update']);
     Route::get('/whiteboards', [WhiteboardController::class, 'index']);
     Route::post('/whiteboards', [WhiteboardController::class, 'storeBoard']);
     Route::patch('/whiteboards/{whiteboard}', [WhiteboardController::class, 'renameBoard']);
@@ -25,11 +32,13 @@ Route::middleware(['auth', 'auth.session'])->group(function (): void {
     Route::put('/whiteboards/{whiteboard}/content', [WhiteboardController::class, 'updateNamed']);
     Route::get('/whiteboard', [WhiteboardController::class, 'show']);
     Route::put('/whiteboard', [WhiteboardController::class, 'update']);
-    Route::get('/profile/work-hours', [WorkHoursController::class, 'index']);
-    Route::put('/profile/work-hours', [WorkHoursController::class, 'update']);
-    Route::post('/profile/work-hours/records', [WorkHoursController::class, 'record']);
-    Route::get('/profile/work-hours/history', [WorkHistoryController::class, 'index']);
-    Route::put('/profile/work-hours/receipts', [WorkHistoryController::class, 'updateReceipt']);
+    Route::middleware(EnsureWorkTrackingSubscription::class)->group(function (): void {
+        Route::get('/profile/work-hours', [WorkHoursController::class, 'index']);
+        Route::put('/profile/work-hours', [WorkHoursController::class, 'update']);
+        Route::post('/profile/work-hours/records', [WorkHoursController::class, 'record']);
+        Route::get('/profile/work-hours/history', [WorkHistoryController::class, 'index']);
+        Route::put('/profile/work-hours/receipts', [WorkHistoryController::class, 'updateReceipt']);
+    });
 
     Route::post('/projects/{project}/roadmaps', [R::class, 'create']);
     Route::patch('/roadmaps/{roadmap}', [R::class, 'update']);

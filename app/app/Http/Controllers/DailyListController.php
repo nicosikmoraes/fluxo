@@ -82,7 +82,7 @@ class DailyListController extends Controller
             'recurring' => ['sometimes', 'boolean'],
         ]);
         if (! empty($data['activity_id']) && ! empty($data['recurring'])) {
-            throw ValidationException::withMessages(['recurring' => 'A repetição diária está disponível para atividades avulsas.']);
+            throw ValidationException::withMessages(['recurring' => __('A repetição diária está disponível para atividades avulsas.')]);
         }
         $entry = DB::transaction(function () use ($data): DailyEntry {
             if (! empty($data['activity_id'])) {
@@ -112,7 +112,7 @@ class DailyListController extends Controller
                 if ($dailyEntry->activity_id) {
                     $activity = Activity::lockForUpdate()->findOrFail($dailyEntry->activity_id);
                     if ($data['completed'] && $activity->blocked) {
-                        throw ValidationException::withMessages(['completed' => 'Desbloqueie a atividade no projeto antes de concluí-la.']);
+                        throw ValidationException::withMessages(['completed' => __('Desbloqueie a atividade no projeto antes de concluí-la.')]);
                     }
                     $activity->update(['status' => $data['completed'] ? 'done' : 'pending']);
                 } else {
@@ -128,7 +128,7 @@ class DailyListController extends Controller
             if (array_key_exists('focused', $data)) {
                 $dailyEntry->unsetRelation('activity');
                 if ($data['focused'] && $dailyEntry->isCompleted()) {
-                    throw ValidationException::withMessages(['focused' => 'Escolha uma atividade pendente para focar.']);
+                    throw ValidationException::withMessages(['focused' => __('Escolha uma atividade pendente para focar.')]);
                 }
                 if ($data['focused']) {
                     DailyEntry::where('planned_for', $dailyEntry->planned_for->toDateString())->where('id', '!=', $dailyEntry->id)->update(['focused' => false]);
@@ -153,7 +153,7 @@ class DailyListController extends Controller
         $date = $request->validate(['date' => $this->dateRules()])['date'];
         $nextDate = Carbon::createFromFormat('!Y-m-d', $date)->addDay()->toDateString();
         if ($nextDate > '2100-12-31') {
-            throw ValidationException::withMessages(['date' => 'Escolha um dia anterior a 31 de dezembro de 2100.']);
+            throw ValidationException::withMessages(['date' => __('Escolha um dia anterior a 31 de dezembro de 2100.')]);
         }
         $count = DB::transaction(function () use ($date, $nextDate): int {
             $this->prepareRoutines($date);

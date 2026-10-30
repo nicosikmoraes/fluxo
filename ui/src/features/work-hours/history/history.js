@@ -1,3 +1,4 @@
+import { currentLocale, formatCurrency, t } from "../../../state/locale";
 import {
   calculateRecordedWorkDay,
   defaultWorkSettings,
@@ -15,22 +16,19 @@ export function clock(value) {
 
 export function duration(value) {
   if (value == null || !Number.isFinite(value)) return "—";
-  if (value > 0 && value < 0.5) return "menos de 1min";
+  if (value > 0 && value < 0.5) return t("menos de 1min");
   const minutes = Math.round(Math.abs(value));
   const hours = Math.floor(minutes / 60);
   return hours ? `${hours}h ${String(minutes % 60).padStart(2, "0")}min` : `${minutes}min`;
 }
 
 export function money(value) {
-  return value == null ? "—" : new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL"
-  }).format(value);
+  return value == null ? "—" : formatCurrency(value);
 }
 
 export function dateLabel(date, options = {}) {
   if (!date) return "—";
-  return new Intl.DateTimeFormat("pt-BR", {
+  return new Intl.DateTimeFormat(currentLocale.value, {
     timeZone: "UTC",
     day: "2-digit",
     month: "short",
@@ -41,7 +39,8 @@ export function dateLabel(date, options = {}) {
 export function historyRecord(record, now) {
   const regime = {
     ...defaultWorkSettings,
-    ...record.regime
+    ...record.regime,
+    overtimeEnabled: currentLocale.value === "en-US" ? false : record.regime?.overtimeEnabled ?? true
   };
   const day = calculateRecordedWorkDay({
     ...regime,
@@ -55,12 +54,13 @@ export function historyRecord(record, now) {
     regime,
     worked: day.workedSeconds / 60,
     overtime: day.overtimeSeconds / 60,
-    target: day.targetSeconds / 60,
+    target: day.targetSeconds == null ? null : day.targetSeconds / 60,
     overtimeRate: day.overtimeRate,
     overtimeBreakdown: day.overtimeBreakdown,
     cycle: day.cycle,
     lunch: record.entries.lunchOut ? day.lunchSeconds / 60 : null,
     estimated: day.overtimeMoney === null ? null : Math.round(day.overtimeMoney * 100) / 100,
+    hourlyEarnings: day.hourlyEarnings == null ? null : Math.round(day.hourlyEarnings * 100) / 100,
     received: record.receipt?.amount ?? 0,
     receivedOn: record.receipt?.received_on || "",
     receiptVersion: record.receipt?.version ?? 0,
@@ -92,12 +92,14 @@ export function summarizeHistory(records) {
     overtime: sum("overtime"),
     estimated: unvaluedDays && !valuedExtras ? null : Math.round(sum("estimated") * 100) / 100,
     unvaluedDays,
+    unvaluedHourlyDays: records.filter((record) => record.worked > 0 && record.hourlyEarnings == null).length,
     received: Math.round(sum("received") * 100) / 100,
+    hourlyEarnings: records.some((record) => record.hourlyEarnings != null) ? Math.round(sum("hourlyEarnings") * 100) / 100 : null,
     averageWorked: complete.length ? sum("worked", complete) / complete.length : null,
     averageLunch: withPauses.length ? sum("lunch", withPauses) / withPauses.length : null,
     averageArrival: averageClock(complete.map((record) => record.startedAt)),
     averageDeparture: averageClock(complete.map((record) => record.finishedAt)),
     extraDays: records.filter((record) => record.overtime > 0).length,
-    balance: complete.reduce((sum, record) => sum + record.worked - record.target, 0),
+    balance: complete.filter((record) => record.target != null).reduce((sum, record) => sum + record.worked - record.target, 0),
   };
 }

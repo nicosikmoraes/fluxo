@@ -4,6 +4,6 @@ import vite from "./vite.config";
 export default mergeConfig(vite, defineConfig({
   test: {
     environment: "happy-dom",
-    include: ["tests/work-hours.test.js", "tests/work-hours-runtime.test.js"],
+    include: ["tests/work-hours.test.js", "tests/work-hours-runtime.test.js", "tests/internationalization.test.js", "tests/workflow-improvements.test.js"],
   },
 }));

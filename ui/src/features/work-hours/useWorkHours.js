@@ -16,9 +16,11 @@ import {
 import {
   calculateRecordedWorkDay
 } from "./workHours";
+import { currentLocale, t } from "../../state/locale";
 
 export function useWorkHours() {
   const owner = auth.user.id;
+  const canTrack = computed(() => auth.user?.id === owner && !!auth.user?.billing?.entitlements?.work_tracking);
   const storageKey = `fluxo:work-widget:${owner}`;
   const state = reactive({
     data: null,
@@ -33,8 +35,11 @@ export function useWorkHours() {
   let clockOffset = 0;
   let interval;
   let lastRefresh = 0;
+  let mounted = false;
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-  const day = computed(() => calculateRecordedWorkDay(state.data?.settings || {}, state.data?.active_day, now.value));
+  const day = computed(() => canTrack.value
+    ? calculateRecordedWorkDay({ ...state.data?.settings, overtimeEnabled: currentLocale.value !== "en-US" }, state.data?.active_day, now.value)
+    : { valid: false, showWidget: false });
 
   try {
     expanded.value = localStorage.getItem(storageKey) === "expanded";
@@ -51,7 +56,14 @@ export function useWorkHours() {
   });
 
   function isCurrent(ticket) {
-    return alive && auth.user?.id === owner && ticket === sequence;
+    return alive && canTrack.value && ticket === sequence;
+  }
+
+  function handleDenied(error) {
+    if (error.status === 403 && auth.user?.id === owner && auth.user.billing?.entitlements) {
+      auth.user.billing.entitlements.work_tracking = false;
+      auth.user.billing.entitlements.pay_calculation = false;
+    }
   }
 
   function apply(data) {
@@ -66,7 +78,7 @@ export function useWorkHours() {
   }
 
   async function read(date) {
-    if (state.saving) return null;
+    if (!canTrack.value || state.saving) return null;
     const ticket = ++sequence;
     lastRefresh = Date.now();
     const query = new URLSearchParams({
@@ -80,6 +92,7 @@ export function useWorkHours() {
       apply(data);
       return data;
     } catch (error) {
+      if (isCurrent(ticket)) handleDenied(error);
       if (isCurrent(ticket)) state.error = error.message;
       throw error;
     } finally {
@@ -88,7 +101,7 @@ export function useWorkHours() {
   }
 
   async function mutate(url, payload) {
-    if (state.saving) return null;
+    if (!canTrack.value || state.saving) return null;
     state.saving = true;
     const ticket = ++sequence;
     try {
@@ -96,8 +109,11 @@ export function useWorkHours() {
       if (!isCurrent(ticket)) return null;
       apply(data);
       return data;
+    } catch (error) {
+      if (isCurrent(ticket)) handleDenied(error);
+      throw error;
     } finally {
-      if (alive && auth.user?.id === owner) state.saving = false;
+      if (alive && auth.user?.id === owner && ticket === sequence) state.saving = false;
     }
   }
 
@@ -115,7 +131,7 @@ export function useWorkHours() {
   }
 
   async function act(action) {
-    if (state.saving || day.value.finished || day.value.stale) return;
+    if (!canTrack.value || state.saving || day.value.finished || day.value.stale) return;
     const entry = state.data?.active_day;
     if (!entry) return;
     try {
@@ -125,10 +141,10 @@ export function useWorkHours() {
         entry_version: entry.version
       });
       if (result) notify({
-        start: "Entrada registrada.",
-        pause: "Pausa iniciada.",
-        resume: "Retorno registrado.",
-        finish: "Saída registrada. Jornada encerrada."
+        start: t("Entrada registrada."),
+        pause: t("Pausa iniciada."),
+        resume: t("Retorno registrado."),
+        finish: t("Saída registrada. Jornada encerrada.")
       } [action]);
     } catch (error) {
       if (alive && auth.user?.id === owner) {
@@ -141,15 +157,32 @@ export function useWorkHours() {
   const finish = () => act("finish");
 
   function refreshWhenVisible() {
-    if (!document.hidden && !state.saving) read().catch(() => {});
+    if (canTrack.value && !document.hidden && !state.saving) read().catch(() => {});
   }
 
-  onMounted(() => {
+  function synchronizeAccess() {
+    clearInterval(interval);
+    sequence++;
+    if (!canTrack.value) {
+      state.data = null;
+      state.error = "";
+      state.loading = false;
+      state.saving = false;
+      expanded.value = false;
+      return;
+    }
+    state.loading = true;
     read().catch(() => {});
     interval = setInterval(() => {
       now.value = new Date(Date.now() + clockOffset);
       if (Date.now() - lastRefresh >= 60000) refreshWhenVisible();
     }, 1000);
+  }
+
+  watch(canTrack, () => { if (mounted) synchronizeAccess(); }, { flush: "sync" });
+  onMounted(() => {
+    mounted = true;
+    synchronizeAccess();
     window.addEventListener("focus", refreshWhenVisible);
     document.addEventListener("visibilitychange", refreshWhenVisible);
   });
@@ -163,6 +196,7 @@ export function useWorkHours() {
   });
 
   return {
+    canTrack,
     state,
     day,
     now,

@@ -3,23 +3,12 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class RoadmapPortalsTest extends TestCase
 {
     use RefreshDatabase;
-
-    public function createApplication(): Application
-    {
-        $app = parent::createApplication();
-        if ($app['config']->get('database.default') !== 'sqlite' || $app['config']->get('database.connections.sqlite.database') !== ':memory:') {
-            throw new \RuntimeException('Estes testes só podem usar SQLite em memória.');
-        }
-
-        return $app;
-    }
 
     private function map(): array
     {
@@ -39,7 +28,7 @@ class RoadmapPortalsTest extends TestCase
 
     public function test_preserves_text_coordinates_and_connections_in_the_account_after_reloading(): void
     {
-        $this->actingAs(User::factory()->create());
+        $this->actingAs(User::factory()->pro()->create());
         [$map, $node] = $this->map();
         $portal = $this->portal($node);
         $this->putJson('/api/roadmaps/'.$map.'/portals', ['version' => 0, 'portals' => [$portal]])->assertOk()->assertJsonPath('portals.0.label', '')->assertJsonPath('portals_version', 1);
@@ -56,7 +45,7 @@ class RoadmapPortalsTest extends TestCase
 
     public function test_rejects_invalid_shapes_and_connections_to_another_map_without_partial_writes(): void
     {
-        $this->actingAs(User::factory()->create());
+        $this->actingAs(User::factory()->pro()->create());
         [$map, $node] = $this->map();
         [, $outside] = $this->map();
         $portal = $this->portal($node);
@@ -78,7 +67,7 @@ class RoadmapPortalsTest extends TestCase
 
     public function test_rejects_a_stale_tab_without_overwriting_the_latest_portals(): void
     {
-        $this->actingAs(User::factory()->create());
+        $this->actingAs(User::factory()->pro()->create());
         [$map, $node] = $this->map();
         $portal = $this->portal($node);
         $this->putJson('/api/roadmaps/'.$map.'/portals', ['version' => 0, 'portals' => [$portal]])->assertOk();
@@ -89,11 +78,11 @@ class RoadmapPortalsTest extends TestCase
 
     public function test_portals_are_only_visible_and_editable_by_the_roadmap_owner(): void
     {
-        $this->actingAs(User::factory()->create());
+        $this->actingAs(User::factory()->pro()->create());
         [$map, $node] = $this->map();
         $portal = $this->portal($node);
         $this->putJson('/api/roadmaps/'.$map.'/portals', ['version' => 0, 'portals' => [$portal]])->assertOk();
-        $this->actingAs(User::factory()->create());
+        $this->actingAs(User::factory()->pro()->create());
         $this->getJson('/api/workspace')->assertOk()->assertJsonPath('roadmaps', []);
         $this->putJson('/api/roadmaps/'.$map.'/portals', ['version' => 1, 'portals' => []])->assertNotFound();
         auth()->logout();

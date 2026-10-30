@@ -22,7 +22,7 @@ class WhiteboardController extends Controller
         ]);
 
         return response()->json(['whiteboards' => collect([
-            ['id' => 'global', 'name' => 'Quadro global', 'is_global' => true],
+            ['id' => 'global', 'name' => __('Quadro global'), 'is_global' => true],
         ])->concat($boards)->values()]);
     }
 
@@ -79,7 +79,7 @@ class WhiteboardController extends Controller
 
         $board = DB::transaction(function () use ($request, $whiteboard, $data, $elements): Whiteboard {
             $board = $request->user()->whiteboards()->whereKey($whiteboard)->lockForUpdate()->firstOrFail();
-            abort_if($board->version !== (int) $data['version'], 409, 'O quadro mudou em outra aba. Exporte seu rascunho antes de carregar a versão salva.');
+            abort_if($board->version !== (int) $data['version'], 409, __('O quadro mudou em outra aba. Exporte seu rascunho antes de carregar a versão salva.'));
             $board->forceFill(['elements' => $elements, 'version' => $board->version + 1])->save();
 
             return $board;
@@ -106,7 +106,7 @@ class WhiteboardController extends Controller
 
         $user = DB::transaction(function () use ($request, $data, $elements): User {
             $user = User::whereKey($request->user()->id)->lockForUpdate()->firstOrFail();
-            abort_if($user->whiteboard_version !== (int) $data['version'], 409, 'O quadro mudou em outra aba. Exporte seu rascunho antes de carregar a versão salva.');
+            abort_if($user->whiteboard_version !== (int) $data['version'], 409, __('O quadro mudou em outra aba. Exporte seu rascunho antes de carregar a versão salva.'));
             $user->forceFill(['whiteboard' => $elements, 'whiteboard_version' => $user->whiteboard_version + 1])->save();
 
             return $user;
@@ -119,7 +119,7 @@ class WhiteboardController extends Controller
     private function validateElements(array $input): array
     {
         if (strlen(json_encode($input, JSON_THROW_ON_ERROR)) > 2000000) {
-            throw ValidationException::withMessages(['elements' => 'O quadro ficou muito grande. Reduza os desenhos antes de salvar.']);
+            throw ValidationException::withMessages(['elements' => __('O quadro ficou muito grande. Reduza os desenhos antes de salvar.')]);
         }
 
         $elements = [];
@@ -144,26 +144,26 @@ class WhiteboardController extends Controller
             ])->validate()['element'];
 
             if (isset($ids[$validated['id']])) {
-                throw ValidationException::withMessages(['elements' => 'Cada elemento do quadro precisa ter um identificador único.']);
+                throw ValidationException::withMessages(['elements' => __('Cada elemento do quadro precisa ter um identificador único.')]);
             }
             $ids[$validated['id']] = true;
             $pointCount += count($validated['points']);
             if ($pointCount > 50000) {
-                throw ValidationException::withMessages(['elements' => 'Há muitos traços no quadro. Simplifique alguns desenhos antes de salvar.']);
+                throw ValidationException::withMessages(['elements' => __('Há muitos traços no quadro. Simplifique alguns desenhos antes de salvar.')]);
             }
             if (in_array($validated['type'], ['line', 'arrow', 'pen']) && count($validated['points']) < 2) {
-                throw ValidationException::withMessages(['elements' => 'Uma linha ou desenho precisa ter pelo menos dois pontos.']);
+                throw ValidationException::withMessages(['elements' => __('Uma linha ou desenho precisa ter pelo menos dois pontos.')]);
             }
             if (in_array($validated['type'], ['line', 'arrow']) && count($validated['points']) !== 2) {
-                throw ValidationException::withMessages(['elements' => 'Uma linha ou seta precisa ter exatamente dois pontos.']);
+                throw ValidationException::withMessages(['elements' => __('Uma linha ou seta precisa ter exatamente dois pontos.')]);
             }
             foreach ($validated['points'] as $point) {
                 if (! is_array($point) || ! array_is_list($point) || count($point) !== 2) {
-                    throw ValidationException::withMessages(['elements' => 'Confira os pontos do desenho.']);
+                    throw ValidationException::withMessages(['elements' => __('Confira os pontos do desenho.')]);
                 }
                 foreach ($point as $coordinate) {
                     if (! is_numeric($coordinate) || ! is_finite((float) $coordinate) || abs((float) $coordinate) > 100000) {
-                        throw ValidationException::withMessages(['elements' => 'Confira as coordenadas do desenho.']);
+                        throw ValidationException::withMessages(['elements' => __('Confira as coordenadas do desenho.')]);
                     }
                 }
             }

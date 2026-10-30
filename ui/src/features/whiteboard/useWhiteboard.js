@@ -1,3 +1,4 @@
+import { t } from "../../state/locale";
 import { onBeforeUnmount, reactive } from "vue";
 import { apiRequest, auth } from "../auth/auth";
 import { clone } from "./whiteboard";
@@ -65,7 +66,7 @@ export function useWhiteboard() {
             state.elements = draft.elements;
             state.dirty = true;
             state.conflict = draft.version !== result.version;
-            if (state.conflict) state.error = "Há uma versão mais recente em outra aba. Exporte seu rascunho antes de carregar a versão salva.";
+            if (state.conflict) state.error = t("Há uma versão mais recente em outra aba. Exporte seu rascunho antes de carregar a versão salva.");
           }
         } catch {}
       }

@@ -1,5 +1,6 @@
 import { reactive } from "vue";
 import { apiRequest, auth } from "../features/auth/auth";
+import { currentLocale, t } from "./locale";
 export const state = reactive({ projects: [], tasks: [], roadmaps: [], loading: true, saving: 0, error: "", toast: null });
 let toastTimer;
 export function notify(message, kind = "success") {
@@ -30,7 +31,7 @@ export async function load() {
   try {
     await refresh();
   } catch (e) {
-    state.error = "Não foi possível carregar seu espaço. Confira se o servidor local está aberto e tente novamente.";
+    state.error = t("Não foi possível carregar seu espaço. Confira se o servidor local está aberto e tente novamente.");
   } finally {
     state.loading = false;
   }
@@ -65,4 +66,4 @@ export async function upload(file) {
 }
 export const statuses = [{ id: "pending", label: "Pendente", short: "Pendentes" }, { id: "doing", label: "Em andamento", short: "Em andamento" }, { id: "done", label: "Concluída", short: "Concluídas" }];
 export const label = (status) => statuses.find((s) => s.id === status)?.label;
-export const date = (value) => new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
+export const date = (value) => new Intl.DateTimeFormat(currentLocale.value, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(value));

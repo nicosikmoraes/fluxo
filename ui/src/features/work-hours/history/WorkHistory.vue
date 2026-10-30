@@ -10,10 +10,16 @@ import HistoryTable from "./components/HistoryTable.vue";
 import HistoryDayDetails from "./components/HistoryDayDetails.vue";
 import { dateLabel, duration } from "./history";
 import { useWorkHistory } from "./useWorkHistory";
+import { auth } from "../../auth/auth";
+import { currentLocale, t } from "../../../state/locale";
+import { isValidDate } from "../../../shared/validation";
 
 const props = defineProps({ workHours: { type: Object, required: true } });
 const emit = defineEmits(["register", "saving-change"]);
-const period = ref("cycle");
+const canCalculatePay = computed(() => !!auth.user?.billing?.entitlements?.pay_calculation);
+const englishMode = computed(() => currentLocale.value === "en-US");
+const period = ref(englishMode.value ? "month" : "cycle");
+watch(englishMode, (hourly) => { if (hourly && period.value === "cycle") period.value = "month"; });
 const monthOffset = ref(0);
 const selectedDate = ref(null);
 const receiptError = ref("");
@@ -36,13 +42,13 @@ const range = computed(() => {
   const end = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + monthOffset.value + 1, 0, 12));
   return { start: start.toISOString().slice(0, 10), end: end.toISOString().slice(0, 10) };
 });
-const invalidRange = computed(() => !range.value.start || !range.value.end || range.value.start > range.value.end || (Date.parse(range.value.end) - Date.parse(range.value.start)) / 86400000 > 365);
+const invalidRange = computed(() => !isValidDate(range.value.start) || !isValidDate(range.value.end) || range.value.start > range.value.end || (Date.parse(range.value.end) - Date.parse(range.value.start)) / 86400000 > 365);
 const history = useWorkHistory(range, invalidRange);
 const { records, summary } = history;
 const settings = computed(() => history.state.data?.settings || profileSettings.value);
 const selected = computed(() => records.value.find((record) => record.date === selectedDate.value));
-const monthTitle = computed(() => new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${range.value.start || today.value}T12:00:00Z`)));
-const rangeLabel = computed(() => invalidRange.value ? "Selecione um período válido de até 366 dias" : `${dateLabel(range.value.start)} a ${dateLabel(range.value.end, { year: "numeric" })}`);
+const monthTitle = computed(() => new Intl.DateTimeFormat(currentLocale.value, { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${range.value.start || today.value}T12:00:00Z`)));
+const rangeLabel = computed(() => invalidRange.value ? t("Selecione um período válido de até 366 dias") : t("{start} a {end}", { start: dateLabel(range.value.start), end: dateLabel(range.value.end, { year: "numeric" }) }));
 const balanceLabel = computed(() => `${summary.value.balance < 0 ? '−' : '+'}${duration(Math.abs(summary.value.balance))}`);
 
 watch(() => history.state.saving, (value) => emit("saving-change", value), { flush: "sync" });
@@ -61,7 +67,7 @@ async function receive(payload) {
     const result = await history.saveReceipt(payload);
     if (!result) return;
     selectedDate.value = null;
-    notify(payload.receivedOn ? "Recebimento salvo na sua conta." : "Recebimento limpo.");
+    notify(payload.receivedOn ? t("Recebimento salvo na sua conta.") : t("Recebimento limpo."));
   } catch (failure) {
     receiptError.value = failure.message;
   }
@@ -76,27 +82,27 @@ function refreshSelected() {
 
 <template>
   <div class="work-history-screen">
-    <section class="history-heading"><div><span class="history-eyebrow"><span></span> SUA JORNADA, COM MAIS CLAREZA</span><h1>Seu tempo conta uma história.</h1><p>Entenda seu ritmo, acompanhe suas horas e veja o valor do seu trabalho.</p></div><div class="history-heading-art" aria-hidden="true"><Clock3 :size="46" /><span></span><i></i><b></b></div></section>
-    <div class="history-section-tabs"><span><BarChart3 :size="15" /> Histórico e estatísticas</span><button :disabled="history.state.saving" @click="emit('register')">Registrar meus horários <ArrowRight :size="13" /></button></div>
-    <section class="history-period" aria-label="Filtrar período">
-      <div class="history-period-heading"><span class="history-calendar-icon"><CalendarDays :size="20" /></span><div><span class="history-period-caption">PERÍODO SELECIONADO</span><strong>{{ period === 'cycle' ? 'Ciclo da empresa' : period === 'month' ? monthTitle : period === 'week' ? 'Esta semana' : 'Período personalizado' }}</strong><small>{{ rangeLabel }}</small></div><div v-if="['month', 'cycle'].includes(period)" class="history-month-arrows"><button :disabled="history.state.saving" aria-label="Período anterior" @click="monthOffset--"><ChevronLeft :size="16" /></button><button :disabled="history.state.saving" aria-label="Próximo período" @click="monthOffset++"><ChevronRight :size="16" /></button></div></div>
-      <div class="history-period-controls"><label for="history-period">Visualizar<select id="history-period" v-model="period" :disabled="history.state.saving"><option value="cycle">Ciclo da empresa</option><option value="month">Por mês</option><option value="week">Esta semana</option><option value="custom">Personalizado</option></select></label><span class="history-regime"><Clock3 :size="13" />{{ settings.weeklyHours }}h / semana <span>·</span> {{ settings.daysPerWeek }} dias</span><button class="history-refresh" :disabled="history.state.loading || history.state.saving" aria-label="Atualizar histórico" @click="history.read"><RefreshCw :size="15" :class="{ spin: history.state.loading }" /></button></div>
-      <div v-if="period === 'custom'" class="history-custom-dates"><label>De<input v-model="customStart" :disabled="history.state.saving" type="date" :max="customEnd || undefined"></label><label>Até<input v-model="customEnd" :disabled="history.state.saving" type="date" :min="customStart || undefined"></label><p v-if="invalidRange" role="alert">Escolha um intervalo de até 366 dias, com a data final igual ou posterior à inicial.</p></div>
+    <section class="history-heading"><div><span class="history-eyebrow"><span></span> {{ t("SUA JORNADA, COM MAIS CLAREZA") }}</span><h1>{{ t("Seu tempo conta uma história.") }}</h1><p>{{ t("Entenda seu ritmo, acompanhe suas horas e veja o valor do seu trabalho.") }}</p></div><div class="history-heading-art" aria-hidden="true"><Clock3 :size="46" /><span></span><i></i><b></b></div></section>
+    <div class="history-section-tabs"><span><BarChart3 :size="15" /> {{ t("Histórico e estatísticas") }}</span><button :disabled="history.state.saving" @click="emit('register')">{{ t("Registrar meus horários") }} <ArrowRight :size="13" /></button></div>
+    <section class="history-period" :aria-label="t('Filtrar período')">
+      <div class="history-period-heading"><span class="history-calendar-icon"><CalendarDays :size="20" /></span><div><span class="history-period-caption">{{ t("PERÍODO SELECIONADO") }}</span><strong>{{ period === 'cycle' ? t('Ciclo da empresa') : period === 'month' ? monthTitle : period === 'week' ? t('Esta semana') : t('Período personalizado') }}</strong><small>{{ rangeLabel }}</small></div><div v-if="['month', 'cycle'].includes(period)" class="history-month-arrows"><button :disabled="history.state.saving" :aria-label="t('Período anterior')" @click="monthOffset--"><ChevronLeft :size="16" /></button><button :disabled="history.state.saving" :aria-label="t('Próximo período')" @click="monthOffset++"><ChevronRight :size="16" /></button></div></div>
+      <div class="history-period-controls"><label for="history-period">{{ t("Visualizar") }}<select id="history-period" v-model="period" :disabled="history.state.saving"><option v-if="!englishMode" value="cycle">{{ t("Ciclo da empresa") }}</option><option value="month">{{ t("Por mês") }}</option><option value="week">{{ t("Esta semana") }}</option><option value="custom">{{ t("Personalizado") }}</option></select></label><span v-if="!englishMode" class="history-regime"><Clock3 :size="13" />{{ settings.weeklyHours }}{{ t("h / semana") }} <span>·</span> {{ settings.daysPerWeek }} {{ t("dias") }}</span><button class="history-refresh" :disabled="history.state.loading || history.state.saving" :aria-label="t('Atualizar histórico')" @click="history.read"><RefreshCw :size="15" :class="{ spin: history.state.loading }" /></button></div>
+      <div v-if="period === 'custom'" class="history-custom-dates"><label>{{ t("De") }}<input v-model="customStart" :disabled="history.state.saving" type="date"></label><label>{{ t("Até") }}<input v-model="customEnd" :disabled="history.state.saving" type="date"></label><p v-if="invalidRange" role="alert">{{ t("Escolha um intervalo de até 366 dias, com a data final igual ou posterior à inicial.") }}</p></div>
     </section>
 
-    <div v-if="history.state.error" class="history-error" role="alert"><p>{{ history.state.error }}</p><button class="text-btn" :disabled="history.state.saving" @click="history.read"><RefreshCw :size="14" /> Tentar novamente</button></div>
-    <div v-if="history.state.loading && !history.state.data" class="history-loading"><LoaderCircle :size="25" class="spin" /><p>Reunindo os registros da sua jornada...</p></div>
+    <div v-if="history.state.error" class="history-error" role="alert"><p>{{ history.state.error }}</p><button class="text-btn" :disabled="history.state.saving" @click="history.read"><RefreshCw :size="14" /> {{ t("Tentar novamente") }}</button></div>
+    <div v-if="history.state.loading && !history.state.data" class="history-loading"><LoaderCircle :size="25" class="spin" /><p>{{ t("Reunindo os registros da sua jornada...") }}</p></div>
     <template v-else-if="history.state.data">
-      <HistorySummary :summary="summary" />
-      <p class="history-money-note"><Info :size="13" /><span>O valor estimado não confirma pagamento. “Recebido” soma os valores registrados para os dias selecionados, mesmo que o pagamento tenha ocorrido em outra data.</span></p>
-      <div v-if="!records.length" class="history-first-record"><Clock3 :size="22" /><div><strong>Este período ainda não tem registros.</strong><p>Registre seus horários ou escolha outro período para acompanhar sua jornada.</p></div><button class="btn primary" @click="emit('register')">Registrar horários <ArrowRight :size="14" /></button></div>
+      <HistorySummary :can-calculate-pay="canCalculatePay" :summary="summary" :english-mode="currentLocale === 'en-US'" />
+      <p v-if="!englishMode && canCalculatePay" class="history-money-note"><Info :size="13" /><span>{{ t("O valor estimado não confirma pagamento. “Recebido” soma os valores registrados para os dias selecionados, mesmo que o pagamento tenha ocorrido em outra data.") }}</span></p>
+      <div v-if="!records.length" class="history-first-record"><Clock3 :size="22" /><div><strong>{{ t("Este período ainda não tem registros.") }}</strong><p>{{ t("Registre seus horários ou escolha outro período para acompanhar sua jornada.") }}</p></div><button class="btn primary" @click="emit('register')">{{ t("Registrar horários") }} <ArrowRight :size="14" /></button></div>
       <div class="history-analysis-grid"><HistoryChart :records="records" @select="openDay" /><HistoryAverages :summary="summary" /></div>
-      <section v-if="summary.days" class="history-insight"><span class="history-insight-icon"><Sparkles :size="19" /></span><div><strong>{{ summary.extraDays }} {{ summary.extraDays === 1 ? 'dia com tempo extra' : 'dias com tempo extra' }} no período.</strong><p>Saldo das jornadas completas: <b>{{ balanceLabel }}</b> em relação às metas de cada dia.{{ summary.pending ? ` Há ${summary.pending} registro(s) incompleto(s) para revisar.` : ' Continue acompanhando seu ritmo.' }}</p></div><button v-if="summary.pending" @click="openDay(records.find((record) => record.status === 'pending').date)">Revisar registro <ArrowRight :size="13" /></button></section>
-      <HistoryTable :records="records" @select="openDay" />
-      <footer class="history-page-footer"><span><Clock3 :size="12" /> Horários em {{ settings.timezone.replaceAll('_', ' ') }} · cada jornada preserva seu próprio fuso</span><span>Seus registros ficam salvos na sua conta</span></footer>
+      <section v-if="summary.days && !englishMode" class="history-insight"><span class="history-insight-icon"><Sparkles :size="19" /></span><div><strong>{{ summary.extraDays }} {{ summary.extraDays === 1 ? t('dia com tempo extra') : t('dias com tempo extra') }} {{ t("no período.") }}</strong><p>{{ t("Saldo das jornadas completas:") }} <b>{{ balanceLabel }}</b> {{ t("em relação às metas de cada dia.") }}{{ summary.pending ? ' ' + t('Há {count} registro(s) incompleto(s) para revisar.', { count: summary.pending }) : t(' Continue acompanhando seu ritmo.') }}</p></div><button v-if="summary.pending" @click="openDay(records.find((record) => record.status === 'pending').date)">{{ t("Revisar registro") }} <ArrowRight :size="13" /></button></section>
+      <HistoryTable :can-calculate-pay="canCalculatePay" :records="records" @select="openDay" />
+      <footer class="history-page-footer"><span><Clock3 :size="12" /> {{ t("Horários em") }} {{ settings.timezone.replaceAll('_', ' ') }} {{ t("· cada jornada preserva seu próprio fuso") }}</span><span>{{ t("Seus registros ficam salvos na sua conta") }}</span></footer>
     </template>
 
-    <HistoryDayDetails v-if="selected" :key="selected.date" :record="selected" :today="today" :busy="history.state.saving" :error="receiptError" @close="selectedDate = null" @receive="receive" @refresh="refreshSelected" @edit="emit('register', $event)" />
+    <HistoryDayDetails :can-calculate-pay="canCalculatePay" v-if="selected" :key="selected.date" :record="selected" :today="today" :english-mode="currentLocale === 'en-US'" :busy="history.state.saving" :error="receiptError" @close="selectedDate = null" @receive="receive" @refresh="refreshSelected" @edit="emit('register', $event)" />
   </div>
 </template>
 

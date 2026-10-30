@@ -33,7 +33,7 @@ class WorkHoursTest extends TestCase
     public function test_defaults_are_disabled_and_salary_is_not_exposed_in_the_session(): void
     {
         $this->atTime();
-        $this->actingAs(User::factory()->create());
+        $this->actingAs(User::factory()->pro()->create());
 
         $this->getJson('/api/profile/work-hours?timezone=America/Sao_Paulo')->assertOk()
             ->assertJsonPath('settings.enabled', false)->assertJsonPath('settings.monthlySalary', null)
@@ -44,7 +44,7 @@ class WorkHoursTest extends TestCase
     public function test_preferences_and_times_survive_reload_and_salary_is_encrypted_at_rest(): void
     {
         $this->atTime();
-        $user = User::factory()->create();
+        $user = User::factory()->pro()->create();
         $this->actingAs($user);
         $payload = $this->payload([], ['startedAt' => '08:00', 'lunchOut' => '12:00', 'lunchIn' => '13:00']);
 
@@ -63,8 +63,8 @@ class WorkHoursTest extends TestCase
     public function test_accounts_have_separate_preferences_and_days_even_with_the_same_date(): void
     {
         $this->atTime();
-        $owner = User::factory()->create();
-        $other = User::factory()->create();
+        $owner = User::factory()->pro()->create();
+        $other = User::factory()->pro()->create();
         $this->actingAs($owner);
         $this->putJson('/api/profile/work-hours', $this->payload([], ['startedAt' => '08:00']))->assertOk();
         $this->flushSession();
@@ -82,7 +82,7 @@ class WorkHoursTest extends TestCase
 
     public static function anonymousEndpoints(): array
     {
-        return [['GET', '/api/profile/work-hours'], ['PUT', '/api/profile/work-hours'], ['POST', '/api/profile/work-hours/records']];
+        return [['GET', '/api/profile/work-hours'], ['PUT', '/api/profile/work-hours'], ['POST', '/api/profile/work-hours/records'], ['GET', '/api/profile/work-hours/history'], ['PUT', '/api/profile/work-hours/receipts']];
     }
 
     #[DataProvider('anonymousEndpoints')]
@@ -111,7 +111,7 @@ class WorkHoursTest extends TestCase
     public function test_invalid_values_return_422_and_do_not_save_preferences_or_times(string $key, mixed $value): void
     {
         $this->atTime();
-        $user = User::factory()->create();
+        $user = User::factory()->pro()->create();
         $this->actingAs($user);
         $payload = $this->payload();
         data_set($payload, $key, $value);
@@ -124,7 +124,7 @@ class WorkHoursTest extends TestCase
     public function test_a_stale_tab_returns_409_and_preserves_the_existing_records(): void
     {
         $this->atTime();
-        $this->actingAs(User::factory()->create());
+        $this->actingAs(User::factory()->pro()->create());
         $payload = $this->payload([], ['startedAt' => '08:00']);
         $this->putJson('/api/profile/work-hours', $payload)->assertOk();
         $payload['settings']['monthlySalary'] = 9000;
@@ -136,7 +136,7 @@ class WorkHoursTest extends TestCase
     public function test_the_widget_records_the_server_time_and_rejects_duplicate_exit(): void
     {
         $this->atTime('2026-10-16 18:30:45');
-        $user = User::factory()->create();
+        $user = User::factory()->pro()->create();
         $this->actingAs($user);
         $this->putJson('/api/profile/work-hours', $this->payload([], ['startedAt' => '08:00', 'lunchOut' => '12:00', 'lunchIn' => '13:00']))->assertOk();
 
@@ -146,10 +146,44 @@ class WorkHoursTest extends TestCase
         $this->postJson('/api/profile/work-hours/records', ['date' => '2026-10-16', 'step' => 'finishedAt', 'entry_version' => 2])->assertUnprocessable();
     }
 
+    public function test_a_pro_account_can_start_and_finish_work_without_any_break(): void
+    {
+        $settings = [...WorkDay::defaultSettings('UTC'), 'enabled' => true, 'hourlyRate' => 20];
+        $this->actingAs(User::factory()->pro()->create(['locale' => 'en-US', 'work_settings' => $settings]));
+        $this->travelTo(CarbonImmutable::parse('2026-10-16T09:00:00Z'));
+
+        $this->postJson('/api/profile/work-hours/records', ['action' => 'start', 'date' => '2026-10-16', 'entry_version' => 0])
+            ->assertOk()->assertJsonCount(0, 'day.breaks')->assertJsonPath('day.entries.startedAt', '09:00');
+        $this->travelTo(CarbonImmutable::parse('2026-10-16T17:00:00Z'));
+        $this->postJson('/api/profile/work-hours/records', ['action' => 'finish', 'date' => '2026-10-16', 'entry_version' => 1])
+            ->assertOk()->assertJsonCount(0, 'day.breaks')->assertJsonPath('day.entries.finishedAt', '17:00');
+
+        $this->assertDatabaseHas('work_days', ['started_at' => '2026-10-16 09:00:00', 'finished_at' => '2026-10-16 17:00:00', 'lunch_out_at' => null, 'lunch_in_at' => null]);
+    }
+
+    public function test_multiple_optional_breaks_are_recorded_and_finishing_closes_the_open_break(): void
+    {
+        $settings = [...WorkDay::defaultSettings('UTC'), 'enabled' => true];
+        $this->actingAs(User::factory()->pro()->create(['work_settings' => $settings]));
+        foreach ([['09:00', 'start'], ['11:00', 'pause'], ['11:15', 'resume'], ['14:00', 'pause']] as $version => [$time, $action]) {
+            $this->travelTo(CarbonImmutable::parse('2026-10-16T'.$time.':00Z'));
+            $this->postJson('/api/profile/work-hours/records', ['action' => $action, 'date' => '2026-10-16', 'entry_version' => $version])->assertOk();
+        }
+        $this->travelTo(CarbonImmutable::parse('2026-10-16T14:10:00Z'));
+
+        $this->postJson('/api/profile/work-hours/records', ['action' => 'finish', 'date' => '2026-10-16', 'entry_version' => 4])
+            ->assertOk()->assertJsonCount(2, 'day.breaks')
+            ->assertJsonPath('day.breaks.0.startTime', '11:00')->assertJsonPath('day.breaks.0.endTime', '11:15')
+            ->assertJsonPath('day.breaks.1.startTime', '14:00')->assertJsonPath('day.breaks.1.endTime', '14:10')
+            ->assertJsonPath('day.entries.finishedAt', '14:10');
+        $this->assertSame(1, count(WorkDay::first()->additional_breaks));
+        $this->assertDatabaseCount('work_days', 1);
+    }
+
     public function test_recording_is_rejected_when_tracking_is_disabled(): void
     {
         $this->atTime();
-        $this->actingAs(User::factory()->create());
+        $this->actingAs(User::factory()->pro()->create());
 
         $this->postJson('/api/profile/work-hours/records', ['date' => '2026-10-16', 'step' => 'startedAt', 'entry_version' => 0])->assertUnprocessable();
         $this->assertDatabaseCount('work_days', 0);
@@ -158,7 +192,7 @@ class WorkHoursTest extends TestCase
     public function test_saving_preferences_preserves_the_exact_seconds_of_existing_records(): void
     {
         $this->atTime();
-        $user = User::factory()->create();
+        $user = User::factory()->pro()->create();
         $this->actingAs($user);
         WorkDay::factory()->create([
             'work_date' => '2026-10-16', 'timezone' => 'America/Sao_Paulo',
@@ -175,7 +209,7 @@ class WorkHoursTest extends TestCase
     public function test_server_clock_records_can_happen_in_the_same_minute(): void
     {
         $this->atTime('2026-10-16 09:00:05');
-        $user = User::factory()->create();
+        $user = User::factory()->pro()->create();
         $this->actingAs($user);
         $this->putJson('/api/profile/work-hours', $this->payload())->assertOk();
         $this->postJson('/api/profile/work-hours/records', ['date' => '2026-10-16', 'step' => 'startedAt', 'entry_version' => 0])->assertOk();
@@ -188,7 +222,7 @@ class WorkHoursTest extends TestCase
     public function test_an_overnight_shift_remains_active_after_midnight_and_new_days_start_empty(): void
     {
         $this->atTime('2026-10-17 06:00:00');
-        $this->actingAs(User::factory()->create());
+        $this->actingAs(User::factory()->pro()->create());
         $payload = $this->payload([], ['startedAt' => '22:00', 'lunchOut' => '02:00', 'lunchIn' => '03:00']);
         $this->putJson('/api/profile/work-hours', $payload)->assertOk()->assertJsonPath('day.instants.lunchIn', '2026-10-17T06:00:00+00:00');
 
@@ -200,7 +234,7 @@ class WorkHoursTest extends TestCase
     public function test_disabling_preserves_saved_records_and_salary_can_be_removed(): void
     {
         $this->atTime();
-        $this->actingAs(User::factory()->create());
+        $this->actingAs(User::factory()->pro()->create());
         $payload = $this->payload([], ['startedAt' => '08:00']);
         $this->putJson('/api/profile/work-hours', $payload)->assertOk();
         $payload['settings']['enabled'] = false;
@@ -215,7 +249,7 @@ class WorkHoursTest extends TestCase
     public function test_an_overnight_shift_finished_today_keeps_its_summary_and_original_regime(): void
     {
         $this->atTime('2026-10-17 06:00:00');
-        $this->actingAs(User::factory()->create());
+        $this->actingAs(User::factory()->pro()->create());
         $payload = $this->payload([], ['startedAt' => '22:00', 'lunchOut' => '02:00', 'lunchIn' => '03:00', 'finishedAt' => '05:00']);
         $this->putJson('/api/profile/work-hours', $payload)->assertOk();
         $payload = $this->payload(['weeklyHours' => 40, 'monthlySalary' => 6000]);
@@ -231,7 +265,7 @@ class WorkHoursTest extends TestCase
     public function test_reordered_and_future_dates_are_rejected_without_partial_changes(): void
     {
         $this->atTime();
-        $this->actingAs(User::factory()->create());
+        $this->actingAs(User::factory()->pro()->create());
         $payload = $this->payload([], ['startedAt' => '08:00', 'lunchOut' => '12:00', 'lunchIn' => '11:00']);
 
         $this->putJson('/api/profile/work-hours', $payload)->assertUnprocessable()->assertJsonValidationErrors('entries.lunchIn');
@@ -244,7 +278,7 @@ class WorkHoursTest extends TestCase
     public function test_a_changed_day_version_returns_409_without_overwriting_preferences(): void
     {
         $this->atTime();
-        $user = User::factory()->create();
+        $user = User::factory()->pro()->create();
         $this->actingAs($user);
         WorkDay::factory()->create(['work_date' => '2026-10-16', 'timezone' => 'America/Sao_Paulo', 'started_at' => '2026-10-16 11:00:00']);
 

@@ -4,11 +4,14 @@ import { CheckCircle2, Clock3, LoaderCircle, RefreshCw, Settings2 } from "@lucid
 import { auth } from "../auth/auth";
 import { notify } from "../../state/workspace";
 import WorkHoursSettings from "./WorkHoursSettings.vue";
+import WorkTrackingUpgrade from "./WorkTrackingUpgrade.vue";
 import AppearanceSettings from "../appearance/AppearanceSettings.vue";
 import { defaultWorkSettings, emptyWorkEntries, parseWorkTime, validateWorkSettings, workTimeInTimezone } from "./workHours";
 
+import { currentLocale, t } from "../../state/locale";
+
 const props = defineProps({ workHours: { type: Object, required: true }, initialDate: { type: String, default: "" } });
-const emit = defineEmits(["open-widget", "open-history"]);
+const emit = defineEmits(["open-widget", "open-history", "upgrade"]);
 const settings = ref({ ...defaultWorkSettings });
 const entries = ref({ ...emptyWorkEntries });
 const extraBreaks = ref([]);
@@ -29,7 +32,7 @@ const nowMinutes = computed(() => parseWorkTime(workTimeInTimezone(props.workHou
 const canRecordNow = computed(() => date.value === props.workHours.state.data?.today || date.value === props.workHours.state.data?.active_day.date && !props.workHours.day.value.stale);
 
 function hydrate(data) {
-  settings.value = { ...data.settings, monthlySalary: data.settings.monthlySalary ?? "" };
+  settings.value = { ...data.settings, monthlySalary: data.settings.monthlySalary ?? "", hourlyRate: data.settings.hourlyRate ?? "" };
   entries.value = { ...data.day.entries };
   extraBreaks.value = (data.day.breaks || []).slice(1).map((pause) => ({ startedAt: pause.startTime, finishedAt: pause.endTime }));
   date.value = data.day.date;
@@ -49,7 +52,7 @@ watch(() => props.workHours.state.data, (data) => {
 }, { immediate: true });
 
 onMounted(() => {
-  if (props.initialDate && props.initialDate !== date.value) reload(props.initialDate);
+  if (props.workHours.canTrack.value && props.initialDate && props.initialDate !== date.value) reload(props.initialDate);
 });
 
 async function reload(selectedDate = date.value) {
@@ -67,7 +70,7 @@ async function reload(selectedDate = date.value) {
 
 function payload(updatedEntries = entries.value) {
   return {
-    settings: { ...settings.value, monthlySalary: settings.value.monthlySalary === "" ? null : settings.value.monthlySalary },
+    settings: { ...settings.value, overtimeEnabled: currentLocale.value !== "en-US", monthlySalary: settings.value.monthlySalary === "" ? null : settings.value.monthlySalary, hourlyRate: settings.value.hourlyRate === "" ? null : settings.value.hourlyRate },
     settings_version: settingsVersion.value,
     date: date.value,
     entry_version: entryVersion.value,
@@ -83,7 +86,7 @@ async function save() {
     const result = await props.workHours.save(payload());
     if (result) {
       hydrate(result);
-      notify("Preferências e horários salvos.");
+      notify(t("Preferências e horários salvos."));
     }
   } catch (failure) {
     error.value = failure.message;
@@ -92,8 +95,8 @@ async function save() {
 
 async function recordNow(key) {
   if (busy.value) return;
-  if (Object.keys(validateWorkSettings(settings.value)).length) {
-    error.value = "Confira a jornada e os valores informados antes de registrar o horário.";
+  if (Object.keys(validateWorkSettings({ ...settings.value, overtimeEnabled: currentLocale.value !== "en-US" })).length) {
+    error.value = t("Confira a jornada e os valores informados antes de registrar o horário.");
     return;
   }
   if (entries.value[key]) return;
@@ -110,7 +113,7 @@ async function recordNow(key) {
     const result = await props.workHours.record(key, entry);
     if (result) {
       hydrate(result);
-      notify(`Horário registrado às ${result.day.entries[key]}.`);
+      notify(t("Horário registrado às {time}.", { time: result.day.entries[key] }));
     }
   } catch (failure) {
     error.value = failure.message;
@@ -121,7 +124,7 @@ async function recordNow(key) {
 
 function selectDate(value) {
   if (dirty.value) {
-    error.value = "Salve suas alterações antes de trocar a data da jornada.";
+    error.value = t("Salve suas alterações antes de trocar a data da jornada.");
     return;
   }
   if (value) reload(value);
@@ -131,19 +134,20 @@ function selectDate(value) {
 <template>
   <div class="profile-settings-screen">
     <header class="profile-settings-heading">
-      <div><span>CONFIGURAÇÕES DO PERFIL</span><h1>Seu tempo, no seu ritmo.</h1><p>Um espaço para cuidar da sua jornada de trabalho.</p></div>
+      <div><span>{{ t("CONFIGURAÇÕES DO PERFIL") }}</span><h1>{{ t("Seu tempo, no seu ritmo.") }}</h1><p>{{ t("Um espaço para cuidar da sua jornada de trabalho.") }}</p></div>
       <div class="profile-settings-ornament" aria-hidden="true"><Clock3 :size="43" /></div>
     </header>
     <div class="profile-settings-account"><span class="profile-settings-avatar">{{ auth.user?.name?.slice(0, 1).toUpperCase() }}</span><div><strong>{{ auth.user?.name }}</strong><span>{{ auth.user?.email }}</span></div><Settings2 :size="16" /></div>
     <AppearanceSettings />
-    <div class="profile-settings-tabs"><span><Clock3 :size="14" /> Jornada de trabalho</span><button class="text-btn profile-history-link" :disabled="busy" @click="emit('open-history')">Ver histórico de horas <Clock3 :size="13" /></button></div>
+    <div class="profile-settings-tabs"><span><Clock3 :size="14" /> {{ t("Jornada de trabalho") }}</span><button v-if="workHours.canTrack.value" class="text-btn profile-history-link" :disabled="busy" @click="emit('open-history')">{{ t("Ver histórico de horas") }} <Clock3 :size="13" /></button></div>
 
-    <div v-if="!initialized && workHours.state.loading" class="loading-state"><LoaderCircle :size="24" class="spin" /><p>Carregando seu perfil...</p></div>
-    <div v-else-if="!initialized" class="profile-settings-error" role="alert"><p>{{ error || workHours.state.error }}</p><button class="text-btn" @click="reload()"><RefreshCw :size="14" /> Tentar novamente</button></div>
+    <WorkTrackingUpgrade v-if="!workHours.canTrack.value" @upgrade="emit('upgrade')" />
+    <div v-else-if="!initialized && workHours.state.loading" class="loading-state"><LoaderCircle :size="24" class="spin" /><p>{{ t("Carregando seu perfil...") }}</p></div>
+    <div v-else-if="!initialized" class="profile-settings-error" role="alert"><p>{{ error || workHours.state.error }}</p><button class="text-btn" @click="reload()"><RefreshCw :size="14" /> {{ t("Tentar novamente") }}</button></div>
     <template v-else>
-      <div v-if="error" class="profile-settings-error" role="alert"><p>{{ error }}</p><button class="text-btn" :disabled="busy" @click="reload()"><RefreshCw :size="14" /> Atualizar dados</button></div>
-      <WorkHoursSettings v-model:settings="settings" v-model:entries="entries" v-model:extra-breaks="extraBreaks" :date="date" :max-date="workHours.state.data.today" :now-minutes="nowMinutes" :saving="busy" :can-record-now="canRecordNow" editable-date allow-equal-times @update:date="selectDate" @save="save()" @record="recordNow" @open-widget="emit('open-widget')" />
-      <p class="profile-settings-footnote">Horários em {{ (recordTimezone || settings.timezone).replaceAll('_', ' ') }}.{{ dirty ? ' Você tem alterações para salvar.' : ' Suas preferências e seus horários ficam salvos na sua conta.' }}</p>
+      <div v-if="error" class="profile-settings-error" role="alert"><p>{{ error }}</p><button class="text-btn" :disabled="busy" @click="reload()"><RefreshCw :size="14" /> {{ t("Atualizar dados") }}</button></div>
+      <WorkHoursSettings :can-calculate-pay="!!auth.user?.billing?.entitlements?.pay_calculation" v-model:settings="settings" v-model:entries="entries" v-model:extra-breaks="extraBreaks" :date="date" :max-date="workHours.state.data.today" :now-minutes="nowMinutes" :saving="busy" :can-record-now="canRecordNow" editable-date allow-equal-times @update:date="selectDate" @save="save()" @record="recordNow" @open-widget="emit('open-widget')" />
+      <p class="profile-settings-footnote">{{ t("Horários em") }} {{ (recordTimezone || settings.timezone).replaceAll('_', ' ') }}.{{ dirty ? t(' Você tem alterações para salvar.') : t(' Suas preferências e seus horários ficam salvos na sua conta.') }}</p>
     </template>
   </div>
 </template>

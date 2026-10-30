@@ -1,4 +1,6 @@
 <script setup>
+import { vValidate } from "../../shared/validation";
+import { t } from "../../state/locale";
 import { computed, ref, watch } from "vue";
 import { Flag, Pencil, X } from "@lucide/vue";
 import { state } from "../../state/workspace";
@@ -148,15 +150,15 @@ function setPositions(positions) {
 defineExpose({ openForm, createConnected, connect, markers, setPositions, cancelMove });
 </script>
 <template>
- <svg class="maps-connections portal-connections" width="100%" height="100%" aria-label="Conexões com portais"><g v-for="link in links" :key="link.id"><path :d="path(link)" class="map-edge portal-link" :class="{finished:isDone(link.node),'in-progress':isInProgress(link.node)}"/><path :d="path(link)" class="portal-trail" :class="{finished:isDone(link.node),'in-progress':isInProgress(link.node)}" pathLength="100"/><path :d="path(link)" class="map-edge-hit" role="button" tabindex="0" aria-label="Remover conexão com portal" @pointerdown.stop @click.stop="removingLink=link" @keydown.enter.prevent.stop="removingLink=link" @keydown.space.prevent.stop="removingLink=link"/></g></svg>
- <article v-for="marker in displayMarkers" :key="marker.id" class="map-portal" :class="{finished:finished(marker),'in-progress':inProgress(marker)}" :style="{left:marker.x+'px',top:marker.y+'px'}" tabindex="0" :aria-label="(marker.label||'Portal sem texto')+(inProgress(marker)?'. Em andamento':finished(marker)?'. Concluído':'')+'. Use as setas para mover.'" @keydown="keyMove($event,marker)">
-  <div class="map-portal-actions"><button class="icon-btn tiny" aria-label="Editar texto do portal" @pointerdown.stop @click="edit(marker)"><Pencil :size="13"/></button><button class="icon-btn tiny" aria-label="Remover portal" @pointerdown.stop @click="remove(marker)"><X :size="13"/></button></div>
-  <button class="map-portal-input" :data-portal-input="marker.id" :aria-label="'Conectar ao portal '+(marker.label||'sem texto')" @pointerdown.stop @click.stop="connect(marker.id)"></button>
+ <svg class="maps-connections portal-connections" width="100%" height="100%" :aria-label="t('Conexões com portais')"><g v-for="link in links" :key="link.id"><path :d="path(link)" class="map-edge portal-link" :class="{finished:isDone(link.node),'in-progress':isInProgress(link.node)}"/><path :d="path(link)" class="portal-trail" :class="{finished:isDone(link.node),'in-progress':isInProgress(link.node)}" pathLength="100"/><path :d="path(link)" class="map-edge-hit" role="button" tabindex="0" :aria-label="t('Remover conexão com portal')" @pointerdown.stop @click.stop="removingLink=link" @keydown.enter.prevent.stop="removingLink=link" @keydown.space.prevent.stop="removingLink=link"/></g></svg>
+ <article v-for="marker in displayMarkers" :key="marker.id" class="map-portal" :class="{finished:finished(marker),'in-progress':inProgress(marker)}" :style="{left:marker.x+'px',top:marker.y+'px'}" tabindex="0" :aria-label="(marker.label||t('Portal sem texto'))+(inProgress(marker)?t('. Em andamento'):finished(marker)?t('. Concluído'):'')+t('. Use as setas para mover.')" @keydown="keyMove($event,marker)">
+  <div class="map-portal-actions"><button class="icon-btn tiny" :aria-label="t('Editar texto do portal')" @pointerdown.stop @click="edit(marker)"><Pencil :size="13"/></button><button class="icon-btn tiny" :aria-label="t('Remover portal')" @pointerdown.stop @click="remove(marker)"><X :size="13"/></button></div>
+  <button class="map-portal-input" :data-portal-input="marker.id" :aria-label="t('Conectar ao portal ')+(marker.label||t('sem texto'))" @pointerdown.stop @click.stop="connect(marker.id)"></button>
   <div class="map-portal-symbol" @pointerdown.stop="startMove($event,marker)" @pointermove.stop="move" @pointerup.stop="endMove" @pointercancel.stop="cancelMove"><Flag :size="26" :stroke-width="1.6"/><span v-if="inProgress(marker)" class="map-portal-wave" aria-hidden="true"><i></i><i></i><i></i><i></i></span></div>
   <button v-if="marker.label" class="map-portal-label" @pointerdown.stop @click="edit(marker)">{{ marker.label }}</button>
  </article>
  <Teleport to="body">
- <Modal v-if="form" :title="form.id?'Editar portal':'Adicionar portal'" @close="form=null"><form class="form-stack" @submit.prevent="save"><label>Texto abaixo <span class="optional">opcional</span><input v-model="label" maxlength="160" autofocus placeholder="Ex.: Entrega do site"></label><p class="muted small">Um marco visual para organizar seu caminho.</p><footer class="modal-actions"><button type="button" class="btn secondary" @click="form=null">Cancelar</button><button class="btn primary">{{ form.id?'Salvar':'Adicionar portal' }}</button></footer></form></Modal>
- <ConfirmDialog v-if="removingLink" title="Remover conexão?" message="O portal e a atividade continuam no roadmap." @close="removingLink=null" @confirm="removeLink"/>
+ <Modal v-if="form" :title="form.id?t('Editar portal'):t('Adicionar portal')" @close="form=null"><form v-validate novalidate class="form-stack" @submit.prevent="save"><label>{{ t("Texto abaixo") }} <span class="optional">{{ t("opcional") }}</span><input v-model="label" data-validate-maxlength="160" autofocus :placeholder="t('Ex.: Entrega do site')"></label><p class="muted small">{{ t("Um marco visual para organizar seu caminho.") }}</p><footer class="modal-actions"><button type="button" class="btn secondary" @click="form=null">{{ t("Cancelar") }}</button><button class="btn primary">{{ form.id?t('Salvar'):t('Adicionar portal') }}</button></footer></form></Modal>
+ <ConfirmDialog v-if="removingLink" :title="t('Remover conexão?')" message="O portal e a atividade continuam no roadmap." @close="removingLink=null" @confirm="removeLink"/>
  </Teleport>
 </template>

@@ -1,3 +1,4 @@
+import { t } from "../../state/locale";
 import { state, request, notify, refresh } from "../../state/workspace";
 import { auth } from "../auth/auth";
 const coordinate = (value) => Math.min(1e6, Math.max(0, Math.round(Number(value) || 0)));
@@ -29,7 +30,7 @@ export async function savePortals(roadmapId, portals) {
     if (current) Object.assign(current, result);
     return true;
   } catch (error) {
-    notify(error.message || "Não foi possível salvar os portais. Tente novamente.", "error");
+    notify(error.message || t("Não foi possível salvar os portais. Tente novamente."), "error");
     if (error.status === 409 && auth.user?.id === owner) await refresh().catch(() => {
     });
     return false;

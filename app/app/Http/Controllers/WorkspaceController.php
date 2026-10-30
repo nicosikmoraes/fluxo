@@ -8,6 +8,7 @@ use App\Models\Project;
 use App\Models\Roadmap;
 use App\Models\RoadmapNode;
 use App\Models\Task;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -30,7 +31,7 @@ class WorkspaceController extends Controller
             if (preg_match('#^/storage/images/[a-zA-Z0-9]+\\.(jpg|jpeg|png|webp|gif)$#', $value) && (Project::where('cover_path', $value)->exists() || Task::where('cover_path', $value)->exists())) {
                 return;
             }
-            $fail('Escolha uma imagem enviada pela sua conta.');
+            $fail(__('Escolha uma imagem enviada pela sua conta.'));
         }];
     }
 
@@ -47,13 +48,25 @@ class WorkspaceController extends Controller
     private function removeImage(?string $url): void
     {
         if ($url && str_starts_with($url, '/storage/images/')) {
-            Storage::disk(str_contains(substr($url, 16), '/') ? 'local' : 'public')->delete(substr($url, 9));
+            $path = substr($url, 9);
+            Storage::disk()->delete($path);
+            if (! str_contains(substr($url, 16), '/') && config('filesystems.disks.public.driver') === 'local') {
+                Storage::disk('public')->delete($path);
+            }
         }
     }
 
     public function createProject(Request $r)
     {
-        return response()->json(Project::create($this->projectData($r)), 201);
+        $data = $this->projectData($r);
+        $project = DB::transaction(function () use ($r, $data): Project {
+            $user = User::whereKey($r->user()->id)->lockForUpdate()->firstOrFail();
+            abort_if(! $user->hasPro() && Project::count() >= config('billing.free_projects'), 403, __('O plano gratuito permite até 3 projetos. Conheça o Fluxo Pro para criar mais.'));
+
+            return Project::create($data);
+        });
+
+        return response()->json($project, 201);
     }
 
     public function updateProject(Request $r, Project $project)
@@ -159,7 +172,7 @@ class WorkspaceController extends Controller
 
         return DB::transaction(function () use ($d, $taskIds) {
             if (count($d['ids']) !== Activity::whereIn('task_id', $taskIds)->count()) {
-                return response()->json(['message' => 'As atividades do projeto mudaram. Atualize o roadmap.'], 422);
+                return response()->json(['message' => __('As atividades do projeto mudaram. Atualize o roadmap.')], 422);
             }
             foreach ($d['ids'] as $position => $id) {
                 Activity::whereKey($id)->update(['roadmap_position' => $position]);
@@ -178,7 +191,7 @@ class WorkspaceController extends Controller
             $r->merge(['blocking_person' => $d['blocking_person'] ?? $activity->blocking_person, 'blocking_reason' => $d['blocking_reason'] ?? $activity->blocking_reason]);
             $d = array_merge($d, $r->validate(['blocking_person' => ['required', 'string', 'max:160'], 'blocking_reason' => ['required', 'string', 'max:5000']]));
             if ($status === 'done') {
-                return response()->json(['message' => 'Desbloqueie a atividade antes de concluí-la.'], 422);
+                return response()->json(['message' => __('Desbloqueie a atividade antes de concluí-la.')], 422);
             }
             $d['blocked_at'] = $activity->blocked_at ?? now();
         } else {
@@ -230,7 +243,7 @@ class WorkspaceController extends Controller
     {
         $d = $r->validate(['ids' => ['required', 'array', 'min:1'], 'ids.*' => ['required', 'integer', 'distinct', Rule::exists('activities', 'id')->where('task_id', $task->id)]]);
         if (count($d['ids']) !== $task->activities()->count()) {
-            return response()->json(['message' => 'A lista de atividades mudou. Atualize o quadro.'], 422);
+            return response()->json(['message' => __('A lista de atividades mudou. Atualize o quadro.')], 422);
         }
         DB::transaction(fn () => collect($d['ids'])->each(fn ($id, $i) => Activity::whereKey($id)->update(['position' => $i])));
 
@@ -240,7 +253,8 @@ class WorkspaceController extends Controller
     public function uploadImage(Request $r)
     {
         $r->validate(['image' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,gif', 'max:8192']]);
-        $path = $r->file('image')->store('images/'.$r->user()->id, 'local');
+        $path = $r->file('image')->store('images/'.$r->user()->id);
+        abort_if($path === false, 503, __('Não foi possível salvar a imagem. Tente novamente.'));
 
         return response()->json(['path' => '/storage/'.$path], 201);
     }

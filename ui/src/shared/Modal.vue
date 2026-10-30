@@ -1,4 +1,5 @@
 <script setup>
+import { t } from "../state/locale";
 import { ref, onMounted, onUnmounted } from "vue";
 defineProps({ title: String, wide: Boolean });
 const emit = defineEmits(["close"]);
@@ -13,7 +14,7 @@ onUnmounted(() => previous?.focus?.());
 <template>
  <dialog ref="dialog" class="modal" :class="{ wide }" @cancel.prevent="emit('close')" @click="e => e.target === dialog && emit('close')">
   <div class="modal-surface">
-   <header class="modal-header"><h2>{{ title }}</h2><button class="icon-btn" aria-label="Fechar" @click="emit('close')"><span aria-hidden="true">×</span></button></header>
+   <header class="modal-header"><h2>{{ title }}</h2><button class="icon-btn" :aria-label="t('Fechar')" @click="emit('close')"><span aria-hidden="true">×</span></button></header>
    <slot />
   </div>
  </dialog>

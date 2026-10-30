@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -11,19 +10,9 @@ class RoadmapCardTypesTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function createApplication(): Application
-    {
-        $app = parent::createApplication();
-        if ($app['config']->get('database.default') !== 'sqlite' || $app['config']->get('database.connections.sqlite.database') !== ':memory:') {
-            throw new \RuntimeException('Estes testes só podem usar SQLite em memória.');
-        }
-
-        return $app;
-    }
-
     public function test_new_roadmaps_choose_a_card_type_and_existing_behavior_defaults_to_activities(): void
     {
-        $this->actingAs(User::factory()->create());
+        $this->actingAs(User::factory()->pro()->create());
         $project = $this->postJson('/api/projects', ['title' => 'Projeto', 'cover' => 'desk'])->assertCreated()->json('id');
 
         $this->postJson('/api/projects/'.$project.'/roadmaps', ['title' => 'Etapas'])->assertCreated()->assertJsonPath('card_type', 'activity');
@@ -33,7 +22,7 @@ class RoadmapCardTypesTest extends TestCase
 
     public function test_task_map_cards_only_reference_tasks_and_do_not_change_their_activities(): void
     {
-        $this->actingAs(User::factory()->create());
+        $this->actingAs(User::factory()->pro()->create());
         $project = $this->postJson('/api/projects', ['title' => 'Projeto', 'cover' => 'desk'])->assertCreated()->json('id');
         $task = $this->postJson('/api/tasks', ['title' => 'Entrega', 'project_id' => $project])->assertCreated()->json('id');
         $activity = $this->postJson('/api/tasks/'.$task.'/activities', ['title' => 'Preparar entrega'])->assertCreated()->json('id');
@@ -48,7 +37,7 @@ class RoadmapCardTypesTest extends TestCase
 
     public function test_task_map_can_create_a_new_connected_task_without_rewriting_the_source_task(): void
     {
-        $this->actingAs(User::factory()->create());
+        $this->actingAs(User::factory()->pro()->create());
         $project = $this->postJson('/api/projects', ['title' => 'Projeto', 'cover' => 'desk'])->assertCreated()->json('id');
         $sourceTask = $this->postJson('/api/tasks', ['title' => 'Pesquisa', 'project_id' => $project])->assertCreated()->json('id');
         $map = $this->postJson('/api/projects/'.$project.'/roadmaps', ['title' => 'Fluxo', 'card_type' => 'task'])->assertCreated()->json('id');

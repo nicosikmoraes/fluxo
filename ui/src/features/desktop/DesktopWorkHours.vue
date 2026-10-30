@@ -15,6 +15,7 @@ import {
   Settings2
 } from "@lucide/vue";
 import WorkHoursWidget from "../work-hours/WorkHoursWidget.vue";
+import WorkTrackingUpgrade from "../work-hours/WorkTrackingUpgrade.vue";
 import {
   useWorkHours
 } from "../work-hours/useWorkHours";
@@ -98,14 +99,15 @@ onUnmounted(() => {
 
 <template>
   <div ref="content" class="desktop-jornada" :class="{ compact: !expanded }">
-    <div v-if="workHours.state.loading && !workHours.state.data" class="desktop-jornada-card"><LoaderCircle :size="24" class="spin" /><p>Reunindo seus horários…</p></div>
+    <WorkTrackingUpgrade v-if="!workHours.canTrack.value" @upgrade="nativeAction(() => openDesktopWorkspace('billing'))" />
+    <div v-else-if="workHours.state.loading && !workHours.state.data" class="desktop-jornada-card"><LoaderCircle :size="24" class="spin" /><p>Reunindo seus horários…</p></div>
     <div v-else-if="!workHours.state.data" class="desktop-jornada-card"><Clock3 :size="26" /><h1>Sua jornada está aqui.</h1><p>{{ workHours.state.error }}</p><button class="btn primary" @click="workHours.read().catch(() => {})"><RefreshCw :size="14" /> Tentar novamente</button></div>
     <div v-else-if="!workHours.state.data.settings.enabled" class="desktop-jornada-card">
       <Clock3 :size="30" /><h1>Seu tempo merece espaço.</h1><p>Configure sua jornada para acompanhar os horários e as horas extras por aqui.</p>
       <button class="btn primary" @click="nativeAction(() => openDesktopWorkspace())"><Settings2 :size="14" /> Configurar minha jornada</button>
       <button class="text-btn" @click="nativeAction(hideDesktopWidget)">Recolher perto do relógio</button>
     </div>
-    <WorkHoursWidget v-else native-window :day="day" :entries="workHours.state.data.active_day.entries" v-model:expanded="expanded" :busy="workHours.state.saving" @action="workHours.act" @finish="workHours.finish" @settings="nativeAction(() => openDesktopWorkspace())" @drag="nativeAction(dragDesktopWidget)" @hide="nativeAction(hideDesktopWidget)" @move="nativeAction(() => desktopCall('desktop_nudge', { direction: $event }))">
+    <WorkHoursWidget v-else native-window :day="day" :entries="workHours.state.data.active_day.entries" :breaks="workHours.state.data.active_day.breaks || []" v-model:expanded="expanded" :busy="workHours.state.saving" @action="workHours.act" @finish="workHours.finish" @settings="nativeAction(() => openDesktopWorkspace())" @drag="nativeAction(dragDesktopWidget)" @hide="nativeAction(hideDesktopWidget)" @move="nativeAction(() => desktopCall('desktop_nudge', { direction: $event }))">
       <template #tools>
         <footer class="desktop-jornada-tools">
           <span>Salvo neste computador</span>

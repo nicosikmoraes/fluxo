@@ -6,8 +6,12 @@ import { notify } from "../src/state/workspace";
 import ProfileSettings from "../src/features/work-hours/ProfileSettings.vue";
 import { useWorkHours } from "../src/features/work-hours/useWorkHours";
 import { defaultWorkSettings, emptyWorkEntries } from "../src/features/work-hours/workHours";
+import { setLocale } from "../src/state/locale";
 
-vi.mock("../src/features/auth/auth", () => ({ auth: { user: { id: 77, name: "Pessoa de teste", email: "teste@example.com" } }, apiRequest: vi.fn() }));
+vi.mock("../src/features/auth/auth", async () => {
+  const { reactive } = await import("vue");
+  return { auth: reactive({ user: null }), apiRequest: vi.fn() };
+});
 vi.mock("../src/state/workspace", () => ({ notify: vi.fn() }));
 
 const wrappers = [];
@@ -35,10 +39,11 @@ function open() {
 beforeEach(() => {
   vi.useFakeTimers();
   vi.setSystemTime(new Date("2026-10-16T16:24:00Z"));
-  auth.user = { id: 77, name: "Pessoa de teste", email: "teste@example.com" };
+  auth.user = { id: 77, name: "Pessoa de teste", email: "teste@example.com", billing: { plan: "pro", entitlements: { work_tracking: true, pay_calculation: true } } };
   vi.mocked(apiRequest).mockReset().mockResolvedValue(response());
   vi.mocked(notify).mockReset();
   localStorage.clear();
+  setLocale("pt-BR");
 });
 
 afterEach(() => {
@@ -48,6 +53,52 @@ afterEach(() => {
 });
 
 describe("Jornada conectada à conta", () => {
+  it("não carrega registros, calcula nem inicia contador para a conta gratuita", async () => {
+    auth.user.billing = { plan: "free", entitlements: { work_tracking: false, pay_calculation: false } };
+    const { wrapper, runtime } = open();
+    await flushPromises();
+    await vi.advanceTimersByTimeAsync(120000);
+    await runtime.read();
+    await runtime.save({ settings: { enabled: true } });
+    await runtime.act("start");
+
+    expect(apiRequest).not.toHaveBeenCalled();
+    expect(runtime.day.value).toEqual({ valid: false, showWidget: false });
+    expect(wrapper.find(".work-settings").exists()).toBe(false);
+    expect(wrapper.find(".work-tracking-upgrade").exists()).toBe(true);
+  });
+
+  it("descarta a resposta pendente e para o widget ao perder a assinatura", async () => {
+    let complete;
+    vi.mocked(apiRequest).mockImplementationOnce(() => new Promise((resolve) => { complete = resolve; }));
+    const { wrapper, runtime } = open();
+    auth.user.billing.entitlements.work_tracking = false;
+    complete(response());
+    await flushPromises();
+    await vi.advanceTimersByTimeAsync(120000);
+
+    expect(apiRequest).toHaveBeenCalledTimes(1);
+    expect(runtime.state.data).toBeNull();
+    expect(runtime.day.value).toEqual({ valid: false, showWidget: false });
+    expect(wrapper.find(".work-settings").exists()).toBe(false);
+  });
+
+  it("interrompe o acompanhamento se o servidor informar que a assinatura terminou", async () => {
+    vi.mocked(apiRequest).mockRejectedValueOnce(Object.assign(new Error("Assinatura necessária."), { status: 403 }));
+    const { wrapper, runtime } = open();
+    await flushPromises();
+    await vi.advanceTimersByTimeAsync(120000);
+
+    expect(runtime.canTrack.value).toBe(false);
+    expect(wrapper.find(".work-tracking-upgrade").exists()).toBe(true);
+    expect(apiRequest).toHaveBeenCalledTimes(1);
+
+    auth.user.billing.entitlements.work_tracking = true;
+    await flushPromises();
+
+    expect(runtime.state.data.day.date).toBe("2026-10-16");
+    expect(wrapper.find(".work-settings").exists()).toBe(true);
+  });
   it("carrega os dados salvos e atualiza o contador sem novas gravações", async () => {
     const { wrapper, runtime } = open();
     await flushPromises();
@@ -96,7 +147,7 @@ describe("Jornada conectada à conta", () => {
     finished.day.version = 2;
     vi.mocked(apiRequest).mockResolvedValueOnce(finished);
     await runtime.finish();
-    expect(vi.mocked(apiRequest).mock.lastCall).toEqual(["/profile/work-hours/records", "POST", { date: "2026-10-16", entry_version: 1, step: "finishedAt" }]);
+    expect(vi.mocked(apiRequest).mock.lastCall).toEqual(["/profile/work-hours/records", "POST", { date: "2026-10-16", entry_version: 1, action: "finish" }]);
     const worked = runtime.day.value.workedSeconds;
     await vi.advanceTimersByTimeAsync(20000);
     expect(runtime.day.value.workedSeconds).toBe(worked);
@@ -137,7 +188,7 @@ describe("Jornada conectada à conta", () => {
     next.active_day = next.day;
     vi.mocked(apiRequest).mockResolvedValueOnce(next);
     await runtime.read();
-    expect(runtime.day.value.showWidget).toBe(false);
+    expect(runtime.day.value.showWidget).toBe(true);
     expect(runtime.state.data.active_day.date).toBe("2026-10-17");
     expect(wrapper.find("#work-date").element.value).toBe("2026-10-17");
   });

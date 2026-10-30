@@ -1,4 +1,5 @@
 <script setup>
+import { t } from "../../../../state/locale";
 import { LogIn, LogOut, Coffee, Timer } from "@lucide/vue";
 import { clock, duration } from "../history";
 defineProps({ summary: { type: Object, required: true } });
@@ -6,12 +7,12 @@ defineProps({ summary: { type: Object, required: true } });
 
 <template>
   <section class="averages-card">
-    <header><span>SEU RITMO</span><h2>Um retrato da sua rotina.</h2><p>Médias dos {{ summary.complete }} dias com jornada completa.</p></header>
-    <div class="average-row"><span class="average-icon"><LogIn :size="17" /></span><div><p>Você costuma chegar às</p><strong>{{ clock(summary.averageArrival) }}</strong></div><span class="average-unit">entrada</span></div>
-    <div class="average-row"><span class="average-icon violet"><LogOut :size="17" /></span><div><p>E encerrar o dia às</p><strong>{{ clock(summary.averageDeparture) }}</strong></div><span class="average-unit">saída</span></div>
-    <div class="average-row"><span class="average-icon mint"><Coffee :size="17" /></span><div><p>Sua pausa para o almoço</p><strong>{{ summary.averageLunch == null ? '—' : duration(summary.averageLunch) }}</strong></div><span class="average-unit">em média</span></div>
-    <div class="average-row"><span class="average-icon peach"><Timer :size="17" /></span><div><p>Tempo trabalhado por dia</p><strong>{{ summary.averageWorked == null ? '—' : duration(summary.averageWorked) }}</strong></div><span class="average-unit">em média</span></div>
-    <footer>Os dias em andamento e os registros incompletos ficam fora das médias.</footer>
+    <header><span>{{ t("SEU RITMO") }}</span><h2>{{ t("Um retrato da sua rotina.") }}</h2><p>{{ t("Médias dos") }} {{ summary.complete }} {{ t("dias com jornada completa.") }}</p></header>
+    <div class="average-row"><span class="average-icon"><LogIn :size="17" /></span><div><p>{{ t("Você costuma chegar às") }}</p><strong>{{ clock(summary.averageArrival) }}</strong></div><span class="average-unit">{{ t("entrada") }}</span></div>
+    <div class="average-row"><span class="average-icon violet"><LogOut :size="17" /></span><div><p>{{ t("E encerrar o dia às") }}</p><strong>{{ clock(summary.averageDeparture) }}</strong></div><span class="average-unit">{{ t("saída") }}</span></div>
+    <div class="average-row"><span class="average-icon mint"><Coffee :size="17" /></span><div><p>{{ t("Sua pausa para o almoço") }}</p><strong>{{ summary.averageLunch == null ? '—' : duration(summary.averageLunch) }}</strong></div><span class="average-unit">{{ t("em média") }}</span></div>
+    <div class="average-row"><span class="average-icon peach"><Timer :size="17" /></span><div><p>{{ t("Tempo trabalhado por dia") }}</p><strong>{{ summary.averageWorked == null ? '—' : duration(summary.averageWorked) }}</strong></div><span class="average-unit">{{ t("em média") }}</span></div>
+    <footer>{{ t("Os dias em andamento e os registros incompletos ficam fora das médias.") }}</footer>
   </section>
 </template>
 

@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password as PasswordRule;
 use Illuminate\Validation\ValidationException;
 
@@ -18,7 +19,7 @@ class AuthController extends Controller
     public function session(Request $request): JsonResponse
     {
         return response()->json([
-            'user' => $request->user()?->only('id', 'name', 'email'),
+            'user' => $request->user() ? [...$request->user()->only('id', 'name', 'email', 'locale'), 'billing' => $request->user()->billingAccess()] : null,
             'csrf_token' => $request->session()->token(),
         ])->header('Cache-Control', 'no-store, private');
     }
@@ -36,17 +37,19 @@ class AuthController extends Controller
         $this->normalizeEmail($request);
         $data = $request->validate([
             'name' => ['required', 'string', 'max:100'],
+            'locale' => ['sometimes', 'string', Rule::in(['pt-BR', 'en-US'])],
             'email' => ['required', 'email', 'max:254', 'unique:users,email'],
             'password' => ['required', 'string', 'confirmed', PasswordRule::min(6), 'max:128'],
         ], [
-            'name.required' => 'Informe seu nome.',
-            'email.required' => 'Informe seu e-mail.',
-            'email.email' => 'Informe um e-mail válido.',
-            'email.unique' => 'Já existe uma conta com este e-mail. Entre ou recupere sua senha.',
-            'password.required' => 'Crie uma senha.',
-            'password.min' => 'Use uma senha com pelo menos 6 caracteres.',
-            'password.confirmed' => 'As senhas precisam ser iguais.',
+            'name.required' => __('Informe seu nome.'),
+            'email.required' => __('Informe seu e-mail.'),
+            'email.email' => __('Informe um e-mail válido.'),
+            'email.unique' => __('Já existe uma conta com este e-mail. Entre ou recupere sua senha.'),
+            'password.required' => __('Crie uma senha.'),
+            'password.min' => __('Use uma senha com pelo menos 6 caracteres.'),
+            'password.confirmed' => __('As senhas precisam ser iguais.'),
         ]);
+        $data['locale'] ??= app()->getLocale() === 'en' ? 'en-US' : 'pt-BR';
         $user = User::create($data);
         Auth::login($user);
         $request->session()->regenerate();
@@ -61,9 +64,9 @@ class AuthController extends Controller
             'email' => ['required', 'email', 'max:254'],
             'password' => ['required', 'string', 'max:128'],
             'remember' => ['sometimes', 'boolean'],
-        ], ['email.required' => 'Informe seu e-mail.', 'email.email' => 'Informe um e-mail válido.', 'password.required' => 'Informe sua senha.']);
+        ], ['email.required' => __('Informe seu e-mail.'), 'email.email' => __('Informe um e-mail válido.'), 'password.required' => __('Informe sua senha.')]);
         if (! Auth::attempt(['email' => $data['email'], 'password' => $data['password']], $data['remember'] ?? false)) {
-            throw ValidationException::withMessages(['email' => 'E-mail ou senha incorretos.']);
+            throw ValidationException::withMessages(['email' => __('E-mail ou senha incorretos.')]);
         }
         $request->session()->regenerate();
 
@@ -82,10 +85,10 @@ class AuthController extends Controller
     public function forgotPassword(Request $request): JsonResponse
     {
         $this->normalizeEmail($request);
-        $data = $request->validate(['email' => ['required', 'email', 'max:254']], ['email.email' => 'Informe um e-mail válido.']);
+        $data = $request->validate(['email' => ['required', 'email', 'max:254']], ['email.email' => __('Informe um e-mail válido.')]);
         Password::sendResetLink($data);
 
-        return response()->json(['message' => 'Se existir uma conta com este e-mail, você receberá as instruções para redefinir sua senha.']);
+        return response()->json(['message' => __('Se existir uma conta com este e-mail, você receberá as instruções para redefinir sua senha.')]);
     }
 
     public function resetPassword(Request $request): JsonResponse
@@ -95,13 +98,13 @@ class AuthController extends Controller
             'email' => ['required', 'email', 'max:254'],
             'token' => ['required', 'string'],
             'password' => ['required', 'string', 'confirmed', PasswordRule::min(6), 'max:128'],
-        ], ['password.min' => 'Use uma senha com pelo menos 6 caracteres.', 'password.confirmed' => 'As senhas precisam ser iguais.']);
+        ], ['password.min' => __('Use uma senha com pelo menos 6 caracteres.'), 'password.confirmed' => __('As senhas precisam ser iguais.')]);
         $status = Password::reset($data, function (User $user, string $password): void {
             $user->forceFill(['password' => Hash::make($password), 'remember_token' => Str::random(60)])->save();
             event(new PasswordReset($user));
         });
         if ($status !== Password::PasswordReset) {
-            throw ValidationException::withMessages(['email' => 'Este link é inválido ou expirou. Peça um novo link de recuperação.']);
+            throw ValidationException::withMessages(['email' => __('Este link é inválido ou expirou. Peça um novo link de recuperação.')]);
         }
 
         return $this->logout($request);
