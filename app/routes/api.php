@@ -1,5 +1,10 @@
 <?php
 
+use App\Http\Controllers\AdminDashboardController;
+use App\Http\Controllers\AdminEventController;
+use App\Http\Controllers\AdminGrantController;
+use App\Http\Controllers\AdminSettingController;
+use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BillingController;
 use App\Http\Controllers\DailyListController as D;
@@ -19,6 +24,20 @@ Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword'])-
 Route::post('/auth/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:password-recovery');
 
 Route::middleware(['auth', 'auth.session'])->group(function (): void {
+
+    Route::prefix('admin')->middleware(['can:access-admin', 'throttle:120,1'])->group(function (): void {
+        Route::get('/overview', [AdminDashboardController::class, 'index']);
+        Route::get('/users/export', [AdminUserController::class, 'export']);
+        Route::get('/users', [AdminUserController::class, 'index']);
+        Route::get('/users/{user}', [AdminUserController::class, 'show']);
+        Route::patch('/users/{user}', [AdminUserController::class, 'update']);
+        Route::post('/users/{user}/grant', [AdminGrantController::class, 'store'])->middleware('throttle:30,1');
+        Route::delete('/users/{user}/grant', [AdminGrantController::class, 'destroy'])->middleware('throttle:30,1');
+        Route::get('/events', [AdminEventController::class, 'index']);
+        Route::get('/settings', [AdminSettingController::class, 'index']);
+        Route::put('/settings', [AdminSettingController::class, 'update']);
+    });
+
     Route::get('/billing', [BillingController::class, 'index']);
     Route::post('/billing/checkout', [BillingController::class, 'checkout'])->middleware('throttle:10,1');
     Route::post('/billing/portal', [BillingController::class, 'portal'])->middleware('throttle:10,1');

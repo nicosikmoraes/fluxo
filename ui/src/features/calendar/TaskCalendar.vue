@@ -1,7 +1,7 @@
 <script setup>
 import { vValidate } from "../../shared/validation";
 import { computed, reactive, ref, watch } from "vue";
-import { CalendarDays, ChevronLeft, ChevronRight, Plus, Search, X, FolderOpen, Sparkles, GripVertical, CalendarOff, ArrowRight, CheckCircle2, Clock3 } from "@lucide/vue";
+import { CalendarDays, ChevronLeft, ChevronRight, Plus, Search, X, FolderOpen, Sparkles, GripVertical, CalendarOff, CheckCircle2, Clock3 } from "@lucide/vue";
 import { state, mutate } from "../../state/workspace";
 import { currentLocale, t } from "../../state/locale";
 import { dateKey, monthDays, parseDay, deliveryLabel } from "./calendar";
@@ -116,7 +116,7 @@ async function saveSchedule(clear = false) {
     <p class="calendar-remove-hint">{{ t("Arraste um card de volta para esta lateral para remover a data.") }}</p>
    </aside>
   </div>
-  <p v-if="!monthly.length" class="calendar-month-note">{{ search?t('Nenhuma entrega com esse nome neste mês.'):t('Este mês está aberto para novas entregas.') }} <button class="text-btn" @click="createTask(dateKey(month))">{{ t("Criar uma task") }} <ArrowRight :size="13" /></button></p>
+  <p v-if="!monthly.length" class="calendar-month-note">{{ search?t('Nenhuma entrega com esse nome neste mês.'):t('Este mês está aberto para novas entregas.') }} <button class="text-btn" @click="createTask(dateKey(month))">{{ t("Criar uma task") }} </button></p>
  </section>
  <Teleport to="body"><div v-if="preview" class="calendar-drag-preview" :class="{unscheduled:preview.unscheduled,'valid-target':over!==null}" :style="{width:dragPosition.width+'px',transform:`translate3d(${dragPosition.x}px,${dragPosition.y}px,0)`}" aria-hidden="true" inert><CalendarTaskCard :task="preview.task" :unscheduled="preview.unscheduled" /></div></Teleport>
  <Modal v-if="schedule" :title="t('Data de entrega')" @close="closeSchedule"><form v-validate novalidate class="form-stack" @submit.prevent="saveSchedule()"><p class="calendar-schedule-title">{{ schedule.title }}</p><label>{{ t("Dia da entrega") }}<input v-model="scheduleDate" type="date" data-validate-min="0001-01-01" data-validate-max="9999-12-31" :aria-label="t('Dia da entrega')" autofocus></label><p class="muted small">{{ deliveryLabel(scheduleDate) }}</p><footer class="modal-actions"><button type="button" class="btn secondary" :disabled="!!state.saving" @click="closeSchedule">{{ t("Cancelar") }}</button><button v-if="schedule.due_date" type="button" class="text-btn" :disabled="!!state.saving" @click="saveSchedule(true)">{{ t("Remover data") }}</button><button class="btn primary" :disabled="!!state.saving">{{ state.saving?t('Salvando...'):t('Salvar data') }}</button></footer></form></Modal>

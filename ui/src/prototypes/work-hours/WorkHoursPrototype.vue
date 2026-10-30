@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onUnmounted, ref } from "vue";
-import { ArrowRight, ArrowUpRight, CalendarDays, Check, CheckCircle2, ChevronRight, Clock3, FolderOpen, LayoutDashboard, ListTodo, Menu, MessageSquare, Monitor, Plus, RotateCcw, Settings2, Sparkles, X } from "@lucide/vue";
+import { CalendarDays, Check, CheckCircle2, ChevronRight, Clock3, FolderOpen, LayoutDashboard, ListTodo, Menu, MessageSquare, Monitor, Plus, RotateCcw, Settings2, Sparkles, X } from "@lucide/vue";
 import WorkHoursSettings from "../../features/work-hours/WorkHoursSettings.vue";
 import WorkHoursWidget from "../../features/work-hours/WorkHoursWidget.vue";
 import { calculateWorkDay, defaultWorkSettings, emptyWorkEntries, formatWorkTime, getWorkTimeline, parseWorkTime } from "../../features/work-hours/workHours";
@@ -164,13 +164,13 @@ expanded.value = view.value !== "settings";
       <main class="prototype-content">
         <template v-if="view === 'settings'">
           <header class="prototype-profile-heading"><span class="prototype-eyebrow">CONFIGURAÇÕES DO PERFIL</span><h1>Seu tempo, no seu ritmo.</h1><p>Um espaço para cuidar da sua jornada de trabalho.</p><div class="prototype-profile-ornament" aria-hidden="true"><Clock3 :size="46" /><span></span><i></i></div></header>
-          <div class="prototype-settings-tabs"><span class="active"><Clock3 :size="14" /> Jornada de trabalho</span><button class="prototype-widget-preview-link" @click="showWidgetOnBoard">Ver widget no quadro <ArrowUpRight :size="13" /></button></div>
+          <div class="prototype-settings-tabs"><span class="active"><Clock3 :size="14" /> Jornada de trabalho</span><button class="prototype-widget-preview-link" @click="showWidgetOnBoard">Ver widget no quadro </button></div>
           <WorkHoursSettings v-model:settings="settings" v-model:entries="entries" v-model:extra-breaks="extraBreaks" :date="workDate" :now-minutes="nowMinutes" @save="showNotice('Preferências aplicadas nesta prévia. Os dados são de demonstração.')" @open-widget="showWidgetOnBoard" />
         </template>
 
         <template v-else>
           <section class="hero prototype-board-hero"><img class="hero-image" src="/ui/hero.png" alt="Mesa criativa com plantas e caderno"><div class="hero-shade"></div><div class="hero-content"><span class="eyebrow"><span class="hero-dot"></span>SEU ESPAÇO PARA FAZER ACONTECER</span><h1>{{ view === 'daily' ? 'Hoje, um passo de cada vez.' : 'Um passo de cada vez.' }}</h1><p>Organize suas ideias. Encontre espaço para o seu tempo.</p><div class="hero-date">sexta-feira, 16 de outubro</div></div></section>
-          <div class="prototype-board-heading"><div><h2>{{ view === 'daily' ? 'Seu dia' : 'Seu quadro' }}<span>4</span></h2><p>O progresso acontece nas pequenas atividades.</p></div><button class="prototype-view-settings" @click="navigate('settings')"><Clock3 :size="15" /> Minha jornada <ArrowRight :size="14" /></button></div>
+          <div class="prototype-board-heading"><div><h2>{{ view === 'daily' ? 'Seu dia' : 'Seu quadro' }}<span>4</span></h2><p>O progresso acontece nas pequenas atividades.</p></div><button class="prototype-view-settings" @click="navigate('settings')"><Clock3 :size="15" /> Minha jornada </button></div>
           <div class="prototype-board-note"><span><Sparkles :size="16" /> Cada passo conta. As pausas também.</span><p>O widget da sua jornada acompanha você no canto da tela.</p></div>
           <div class="prototype-board-columns" :class="{ 'daily-layout': view === 'daily' }">
             <section v-for="column in columns" :key="column.status" class="prototype-board-column" :class="column.status">
@@ -180,12 +180,12 @@ expanded.value = view.value !== "settings";
                 <span class="prototype-task-project" :class="task.color"><i></i>{{ task.project }}</span>
                 <h4>{{ task.title }}</h4><p>{{ task.body }}</p>
                 <div class="prototype-task-progress"><span :style="{ width: task.done / task.total * 100 + '%' }"></span></div>
-                <footer><span><ListTodo :size="13" />{{ task.done }}/{{ task.total }}</span><span><MessageSquare :size="12" />2</span><Check v-if="task.done === task.total" :size="14" /><ArrowUpRight v-else :size="14" /></footer>
+                <footer><span><ListTodo :size="13" />{{ task.done }}/{{ task.total }}</span><span><MessageSquare :size="12" />2</span><Check v-if="task.done === task.total" :size="14" /></footer>
               </article>
             </section>
           </div>
           <p class="prototype-board-footnote">Tasks de exemplo para visualizar o widget durante o uso do Fluxo.</p>
-          <section v-if="!day.showWidget" class="prototype-no-widget"><Clock3 :size="20" /><div><strong>{{ settings.enabled ? 'Sua jornada ainda está começando.' : 'Acompanhe seu tempo de trabalho.' }}</strong><p>{{ settings.enabled ? 'O widget aparece quando você registrar o retorno do almoço.' : 'Ative o acompanhamento nas configurações do seu perfil.' }}</p></div><button @click="navigate('settings')">Abrir configurações <ArrowRight :size="14" /></button></section>
+          <section v-if="!day.showWidget" class="prototype-no-widget"><Clock3 :size="20" /><div><strong>{{ settings.enabled ? 'Sua jornada ainda está começando.' : 'Acompanhe seu tempo de trabalho.' }}</strong><p>{{ settings.enabled ? 'O widget aparece quando você registrar o retorno do almoço.' : 'Ative o acompanhamento nas configurações do seu perfil.' }}</p></div><button @click="navigate('settings')">Abrir configurações </button></section>
         </template>
 
         <footer class="prototype-page-footer"><span>Feito para acompanhar seu ritmo.</span><span>Prévia com dados de exemplo · nada é salvo na sua conta.</span></footer>

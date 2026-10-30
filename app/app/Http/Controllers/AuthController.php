@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AdminSetting;
 use App\Models\User;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\JsonResponse;
@@ -19,7 +20,8 @@ class AuthController extends Controller
     public function session(Request $request): JsonResponse
     {
         return response()->json([
-            'user' => $request->user() ? [...$request->user()->only('id', 'name', 'email', 'locale'), 'billing' => $request->user()->billingAccess()] : null,
+            'user' => $request->user() ? [...$request->user()->only('id', 'name', 'email', 'locale', 'is_admin'), 'billing' => $request->user()->billingAccess()] : null,
+            'site' => AdminSetting::publicPreferences(),
             'csrf_token' => $request->session()->token(),
         ])->header('Cache-Control', 'no-store, private');
     }
@@ -34,6 +36,9 @@ class AuthController extends Controller
 
     public function register(Request $request): JsonResponse
     {
+        $preferences = AdminSetting::preferences();
+        abort_if($preferences['maintenance'], 503, __('O Fluxo está em manutenção. Tente novamente em breve.'));
+        abort_unless($preferences['newAccounts'], 403, __('Novos cadastros estão temporariamente desativados.'));
         $this->normalizeEmail($request);
         $data = $request->validate([
             'name' => ['required', 'string', 'max:100'],
@@ -65,7 +70,7 @@ class AuthController extends Controller
             'password' => ['required', 'string', 'max:128'],
             'remember' => ['sometimes', 'boolean'],
         ], ['email.required' => __('Informe seu e-mail.'), 'email.email' => __('Informe um e-mail válido.'), 'password.required' => __('Informe sua senha.')]);
-        if (! Auth::attempt(['email' => $data['email'], 'password' => $data['password']], $data['remember'] ?? false)) {
+        if (! Auth::attempt(['email' => $data['email'], 'password' => $data['password'], 'disabled_at' => null], $data['remember'] ?? false)) {
             throw ValidationException::withMessages(['email' => __('E-mail ou senha incorretos.')]);
         }
         $request->session()->regenerate();

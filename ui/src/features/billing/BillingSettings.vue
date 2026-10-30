@@ -61,6 +61,7 @@ onMounted(read);
     <p v-if="error" class="billing-message error" role="alert">{{ error }}</p>
     <p v-if="pending" class="billing-message" role="status">{{ t("Seu pagamento está sendo confirmado. Atualize o plano em instantes.") }}</p>
     <p v-else-if="result === 'cancelled'" class="billing-message">{{ t("Checkout encerrado. Seu plano continua como antes.") }}</p>
+    <p v-if="data?.access_source === 'manual'" class="billing-message" role="status">{{ t("Seu acesso Pro foi concedido pela administração.") }} {{data.courtesy_expires_at ? t("Válido até") + " " + new Date(data.courtesy_expires_at).toLocaleString(currentLocale) : t("Sem vencimento.")}}</p>
     <div class="billing-toolbar"><span>{{ t("Seu plano") }}: <strong>{{ pro ? 'Fluxo Pro' : t('Gratuito') }}</strong><template v-if="data?.subscription"> · {{ t(status) }}</template></span><button class="text-btn" :disabled="loading || busy" @click="read"><RefreshCw :size="14" :class="{ spin: loading }" /> {{ t("Atualizar plano") }}</button></div>
     <div class="billing-plans">
       <article class="billing-plan"><span class="billing-tag">{{ !pro ? t('SEU PLANO ATUAL') : t('PARA COMEÇAR') }}</span><h2>{{ t("Gratuito") }}</h2><p class="billing-price">{{ t("Grátis") }}</p><p>{{ t("Organize seu trabalho no seu ritmo.") }}</p><ul><li v-for="feature in freeFeatures" :key="feature"><Check :size="16" /> {{ t(feature) }}</li></ul><span v-if="data" class="billing-usage">{{ t('{count} de 3 projetos em uso', { count: data.usage.projects }) }}</span></article>

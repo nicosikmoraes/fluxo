@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnforceAccountAccess;
 use App\Http\Middleware\LocalAccess;
 use App\Http\Middleware\SetLocale;
 use Illuminate\Foundation\Application;
@@ -16,7 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->append(LocalAccess::class);
         $middleware->validateCsrfTokens(except: ['stripe/webhook']);
-        $middleware->web(append: [SetLocale::class]);
+        $middleware->web(append: [SetLocale::class, EnforceAccountAccess::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

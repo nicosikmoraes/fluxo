@@ -22,6 +22,9 @@ export default defineConfig({
     rollupOptions: {
       input: {
         app: fileURLToPath(new URL("./index.html", import.meta.url)),
+        admin: fileURLToPath(new URL("./admin.html", import.meta.url)),
+        adminPrototype: fileURLToPath(new URL("./prototypes/admin.html", import.meta.url)),
+        roadmapDarkPrototype: fileURLToPath(new URL("./prototypes/roadmap-dark.html", import.meta.url)),
       },
     },
   },
