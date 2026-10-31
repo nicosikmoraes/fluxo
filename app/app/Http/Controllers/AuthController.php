@@ -44,14 +44,14 @@ class AuthController extends Controller
             'name' => ['required', 'string', 'max:100'],
             'locale' => ['sometimes', 'string', Rule::in(['pt-BR', 'en-US'])],
             'email' => ['required', 'email', 'max:254', 'unique:users,email'],
-            'password' => ['required', 'string', 'confirmed', PasswordRule::min(6), 'max:128'],
+            'password' => ['required', 'string', 'confirmed', PasswordRule::min(8), 'max:128'],
         ], [
             'name.required' => __('Informe seu nome.'),
             'email.required' => __('Informe seu e-mail.'),
             'email.email' => __('Informe um e-mail válido.'),
             'email.unique' => __('Já existe uma conta com este e-mail. Entre ou recupere sua senha.'),
             'password.required' => __('Crie uma senha.'),
-            'password.min' => __('Use uma senha com pelo menos 6 caracteres.'),
+            'password.min' => __('Use uma senha com pelo menos 8 caracteres.'),
             'password.confirmed' => __('As senhas precisam ser iguais.'),
         ]);
         $data['locale'] ??= app()->getLocale() === 'en' ? 'en-US' : 'pt-BR';
@@ -102,8 +102,8 @@ class AuthController extends Controller
         $data = $request->validate([
             'email' => ['required', 'email', 'max:254'],
             'token' => ['required', 'string'],
-            'password' => ['required', 'string', 'confirmed', PasswordRule::min(6), 'max:128'],
-        ], ['password.min' => __('Use uma senha com pelo menos 6 caracteres.'), 'password.confirmed' => __('As senhas precisam ser iguais.')]);
+            'password' => ['required', 'string', 'confirmed', PasswordRule::min(8), 'max:128'],
+        ], ['password.min' => __('Use uma senha com pelo menos 8 caracteres.'), 'password.confirmed' => __('As senhas precisam ser iguais.')]);
         $status = Password::reset($data, function (User $user, string $password): void {
             $user->forceFill(['password' => Hash::make($password), 'remember_token' => Str::random(60)])->save();
             event(new PasswordReset($user));

@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\EnforceAccountAccess;
 use App\Http\Middleware\LocalAccess;
+use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\SetLocale;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -15,7 +16,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->trustProxies(at: env('TRUSTED_PROXIES', '*') === '*' ? '*' : explode(',', env('TRUSTED_PROXIES')));
         $middleware->append(LocalAccess::class);
+        $middleware->append(SecurityHeaders::class);
         $middleware->validateCsrfTokens(except: ['stripe/webhook']);
         $middleware->web(append: [SetLocale::class, EnforceAccountAccess::class]);
     })

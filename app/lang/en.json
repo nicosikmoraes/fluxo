@@ -4,7 +4,7 @@
   "Informe um e-mail válido.": "Enter a valid email address.",
   "Já existe uma conta com este e-mail. Entre ou recupere sua senha.": "An account already exists with this email. Sign in or reset your password.",
   "Crie uma senha.": "Create a password.",
-  "Use uma senha com pelo menos 6 caracteres.": "Use a password with at least 6 characters.",
+  "Use uma senha com pelo menos 8 caracteres.": "Use a password with at least 8 characters.",
   "As senhas precisam ser iguais.": "Passwords must match.",
   "Informe sua senha.": "Enter your password.",
   "Se existir uma conta com este e-mail, você receberá as instruções para redefinir sua senha.": "If an account exists with this email, you will receive password reset instructions.",
