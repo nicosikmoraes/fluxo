@@ -25,7 +25,7 @@ class EnforceAccountAccess
         if ($request->user() && ! $request->user()->is_admin && $request->is('api/*')
          && ! $request->is('api/auth/*', 'api/billing', 'api/billing/*')
          && AdminSetting::preferences()['maintenance']) {
-            return response()->json(['message' => __('O Fluxo está em manutenção. Tente novamente em breve.')], 503)->header('Retry-After', '300');
+            return response()->json(['message' => __('O Tempozi está em manutenção. Tente novamente em breve.')], 503)->header('Retry-After', '300');
         }
 
         return $next($request);

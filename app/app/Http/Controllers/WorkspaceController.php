@@ -61,7 +61,7 @@ class WorkspaceController extends Controller
         $data = $this->projectData($r);
         $project = DB::transaction(function () use ($r, $data): Project {
             $user = User::whereKey($r->user()->id)->lockForUpdate()->firstOrFail();
-            abort_if(! $user->hasPro() && Project::count() >= config('billing.free_projects'), 403, __('O plano gratuito permite até 3 projetos. Conheça o Fluxo Pro para criar mais.'));
+            abort_if(! $user->hasPro() && Project::count() >= config('billing.free_projects'), 403, __('O plano gratuito permite até 3 projetos. Conheça o Tempozi Pro para criar mais.'));
 
             return Project::create($data);
         });

@@ -1,21 +1,21 @@
 <script setup>
 import { computed, reactive, ref } from "vue";
 import { CheckCircle2, Eye, EyeOff, LoaderCircle, LockKeyhole, Mail, ShieldCheck, UserRound } from "@lucide/vue";
-import { apiRequest, auth } from "./auth";
+import { apiRequest, auth, signOut } from "./auth";
 import LanguageSelect from "../appearance/LanguageSelect.vue";
 import { currentLocale, t } from "../../state/locale";
-const props = defineProps({ resetToken: { type: String, default: "" }, resetEmail: { type: String, default: "" } });
+const props = defineProps({ resetToken: { type: String, default: "" }, resetEmail: { type: String, default: "" }, verificationRequired: { type: Boolean, default: false } });
 const emit = defineEmits(["reset-finished"]);
-const mode = ref(props.resetToken ? "reset" : "login");
+const mode = ref(props.verificationRequired ? "verify" : props.resetToken ? "reset" : "login");
 const values = reactive({ name: "", email: props.resetEmail, password: "", password_confirmation: "", remember: false });
 const busy = ref(false);
 const reveal = ref(false);
 const error = ref("");
 const success = ref("");
 const fieldErrors = reactive({ name: "", email: "", password: "", password_confirmation: "" });
-const title = computed(() => ({ login: t("Que bom ter você de volta"), register: t("Crie seu espaço no Fluxo"), forgot: t("Vamos recuperar seu acesso"), reset: t("Um novo começo") })[mode.value]);
-const description = computed(() => ({ login: t("Entre para continuar no seu espaço de trabalho."), register: t("Suas ideias merecem um lugar para acontecer."), forgot: t("Informe seu e-mail para receber um link de recuperação."), reset: t("Escolha uma nova senha para entrar no seu espaço.") })[mode.value]);
-const action = computed(() => ({ login: t("Entrar no Fluxo"), register: t("Criar minha conta"), forgot: t("Enviar instruções"), reset: t("Salvar nova senha") })[mode.value]);
+const title = computed(() => ({ login: t("Que bom ter você de volta"), register: t("Crie seu espaço no Tempozi"), forgot: t("Vamos recuperar seu acesso"), reset: t("Um novo começo"), verify: t("Confirme seu e-mail") })[mode.value]);
+const description = computed(() => ({ login: t("Entre para continuar no seu espaço de trabalho."), register: t("Suas ideias merecem um lugar para acontecer."), forgot: t("Informe seu e-mail para receber um link de recuperação."), reset: t("Escolha uma nova senha para entrar no seu espaço."), verify: t("Enviamos um link para confirmar seu endereço antes de acessar o Tempozi.") })[mode.value]);
+const action = computed(() => ({ login: t("Entrar no Tempozi"), register: t("Criar minha conta"), forgot: t("Enviar instruções"), reset: t("Salvar nova senha"), verify: t("Reenviar e-mail de confirmação") })[mode.value]);
 function changeMode(next) {
   mode.value = next;
   error.value = "";
@@ -58,7 +58,10 @@ async function submit() {
   if (!validate()) return;
   busy.value = true;
   try {
-    if (mode.value === "forgot") {
+    if (mode.value === "verify") {
+      const data = await apiRequest("/auth/email/verification-notification", "POST");
+      success.value = data.message;
+    } else if (mode.value === "forgot") {
       const data = await apiRequest("/auth/forgot-password", "POST", { email: values.email });
       success.value = data.message;
     } else if (mode.value === "reset") {
@@ -87,17 +90,18 @@ async function submit() {
  <main class="auth-page">
   <img class="auth-backdrop" src="/ui/login-banner.png" alt="" fetchpriority="high" />
   <div class="auth-wash"></div>
-  <header class="auth-header"><a class="brand" href="/" :aria-label="t('Fluxo, início')"><span class="brand-mark"><span></span><span></span><span></span></span><span>fluxo<span class="brand-period">.</span></span></a><LanguageSelect :disabled="busy" /><span class="auth-header-note">{{ t("Seu espaço. Seu ritmo.") }}</span></header>
+  <header class="auth-header"><a class="brand" href="/" :aria-label="t('Tempozi, início')"><span class="brand-mark"><span></span><span></span><span></span></span><span>tempozi<span class="brand-period">.</span></span></a><LanguageSelect :disabled="busy" /><span class="auth-header-note">{{ t("Seu espaço. Seu ritmo.") }}</span></header>
   <div class="auth-layout">
-   <section class="auth-story" :aria-label="t('Bem-vindo ao Fluxo')"><span class="auth-eyebrow"><i></i> {{ t("SEU TRABALHO, PASSO A PASSO") }}</span><h1>{{ t("Retome") }} <br>{{ t("o seu fluxo") }}<span>.</span></h1><p>{{ t("Seu dia ganha espaço quando tudo") }}<br class="auth-wide-break"> {{ t("encontra o seu lugar.") }}</p><div class="auth-story-tag"><CheckCircle2 :size="15" /> {{ t("Pequenos passos. Grandes conquistas.") }}</div></section>
+   <section class="auth-story" :aria-label="t('Bem-vindo ao Tempozi')"><span class="auth-eyebrow"><i></i> {{ t("SEU TRABALHO, PASSO A PASSO") }}</span><h1>{{ t("Retome") }} <br>{{ t("o seu fluxo") }}<span>.</span></h1><p>{{ t("Seu dia ganha espaço quando tudo") }}<br class="auth-wide-break"> {{ t("encontra o seu lugar.") }}</p><div class="auth-story-tag"><CheckCircle2 :size="15" /> {{ t("Pequenos passos. Grandes conquistas.") }}</div></section>
    <section class="auth-card" :aria-label="title">
     <div class="auth-card-symbol"><LockKeyhole :size="20" /></div>
     <h2>{{ title }}</h2><p class="auth-description">{{ description }}</p>
-    <p v-if="mode==='login' && (auth.site?.registration_enabled===false || auth.site?.maintenance)" class="auth-policy-note" role="status">{{t(auth.site?.maintenance?"O Fluxo está em manutenção. Tente novamente em breve.":"Novos cadastros estão temporariamente desativados.")}}</p><div v-if="mode==='login' || mode==='register'" class="auth-tabs" :aria-label="t('Acesso ao Fluxo')"><button type="button" :class="{selected:mode==='login'}" :aria-pressed="mode==='login'" :disabled="busy" @click="changeMode('login')">{{ t("Entrar") }}</button><button v-if="auth.site?.registration_enabled !== false && !auth.site?.maintenance" type="button" :class="{selected:mode==='register'}" :aria-pressed="mode==='register'" :disabled="busy" @click="changeMode('register')">{{ t("Criar conta") }}</button></div>
+    <p v-if="mode==='login' && (auth.site?.registration_enabled===false || auth.site?.maintenance)" class="auth-policy-note" role="status">{{t(auth.site?.maintenance?"O Tempozi está em manutenção. Tente novamente em breve.":"Novos cadastros estão temporariamente desativados.")}}</p><div v-if="mode==='login' || mode==='register'" class="auth-tabs" :aria-label="t('Acesso ao Tempozi')"><button type="button" :class="{selected:mode==='login'}" :aria-pressed="mode==='login'" :disabled="busy" @click="changeMode('login')">{{ t("Entrar") }}</button><button v-if="auth.site?.registration_enabled !== false && !auth.site?.maintenance" type="button" :class="{selected:mode==='register'}" :aria-pressed="mode==='register'" :disabled="busy" @click="changeMode('register')">{{ t("Criar conta") }}</button></div>
     <div v-if="auth.message" class="auth-feedback info" role="status">{{ auth.message }}</div>
     <div v-if="error" class="auth-feedback error" role="alert">{{ error }}</div>
     <div v-if="success" class="auth-feedback success" role="status"><CheckCircle2 :size="16" /><span>{{ success }}</span></div>
-    <form novalidate @submit.prevent="submit">
+    <div v-if="mode==='verify'" class="auth-feedback info" role="status"><Mail :size="16" /><span>{{ t("Confirme o endereço") }} <strong>{{ auth.user?.email }}</strong>. {{ t("Se não encontrar a mensagem, confira a pasta de spam.") }}</span></div>
+    <form v-if="mode!=='verify'" novalidate @submit.prevent="submit">
      <fieldset :disabled="busy">
       <div v-if="mode==='register'" class="auth-field"><label for="auth-name">{{ t("Como podemos te chamar?") }}</label><div class="auth-input" :class="{'has-error':fieldErrors.name}"><UserRound :size="17" /><input id="auth-name" v-model="values.name" name="name" autocomplete="name" :placeholder="t('Seu nome')" @input="clearFieldError('name')" :aria-invalid="!!fieldErrors.name" aria-describedby="auth-name-error" /></div><p v-if="fieldErrors.name" id="auth-name-error" class="auth-field-error" role="alert">{{ fieldErrors.name }}</p></div>
       <div class="auth-field"><label for="auth-email">{{ t("E-mail") }}</label><div class="auth-input" :class="{'has-error':fieldErrors.email}"><Mail :size="17" /><input id="auth-email" v-model="values.email" type="email" name="email" autocomplete="email" :placeholder="t('voce@exemplo.com')" @input="clearFieldError('email')" :aria-invalid="!!fieldErrors.email" aria-describedby="auth-email-error" /></div><p v-if="fieldErrors.email" id="auth-email-error" class="auth-field-error" role="alert">{{ fieldErrors.email }}</p></div>
@@ -107,12 +111,14 @@ async function submit() {
       <button type="submit" class="auth-submit"><LoaderCircle v-if="busy" :size="17" class="spin" /><span>{{ busy?t('Só um instante...'):action }}</span></button>
      </fieldset>
     </form>
+    <button v-if="mode==='verify'" type="button" class="auth-submit" :disabled="busy" @click="submit"><LoaderCircle v-if="busy" :size="17" class="spin" /><span>{{ busy?t('Só um instante...'):action }}</span></button>
+    <button v-if="mode==='verify'" class="auth-back" type="button" :disabled="busy" @click="signOut">{{ t("Sair da conta") }}</button>
     <p v-if="(mode==='login' || mode==='register') && auth.site?.registration_enabled !== false && !auth.site?.maintenance" class="auth-switch">{{ mode==='login'?t('Primeira vez por aqui?'):t('Já tem uma conta?') }} <button type="button" :disabled="busy" @click="changeMode(mode==='login'?'register':'login')">{{ mode==='login'?t('Crie sua conta'):t('Entrar') }}</button></p>
-    <button v-else class="auth-back" type="button" :disabled="busy" @click="changeMode('login')">{{ t("Voltar para entrar") }}</button>
+    <button v-else-if="mode!=='verify'" class="auth-back" type="button" :disabled="busy" @click="changeMode('login')">{{ t("Voltar para entrar") }}</button>
     <div class="auth-trust"><ShieldCheck :size="14" /><span>{{ t("Um espaço só seu, para cada ideia.") }}</span></div>
    </section>
   </div>
-  <footer class="auth-footer"><span>{{ t("Feito para o seu ritmo.") }}</span><span>fluxo. © {{ new Date().getFullYear() }}</span></footer>
+  <footer class="auth-footer"><span>{{ t("Feito para o seu ritmo.") }}</span><span>tempozi. © {{ new Date().getFullYear() }}</span></footer>
  </main>
 </template>
 

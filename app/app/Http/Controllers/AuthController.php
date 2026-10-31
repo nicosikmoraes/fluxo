@@ -6,6 +6,7 @@ use App\Models\AdminSetting;
 use App\Models\User;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -20,7 +21,7 @@ class AuthController extends Controller
     public function session(Request $request): JsonResponse
     {
         return response()->json([
-            'user' => $request->user() ? [...$request->user()->only('id', 'name', 'email', 'locale', 'is_admin'), 'billing' => $request->user()->billingAccess()] : null,
+            'user' => $request->user() ? [...$request->user()->only('id', 'name', 'email', 'locale', 'is_admin'), 'email_verified' => $request->user()->hasVerifiedEmail(), 'billing' => $request->user()->billingAccess()] : null,
             'site' => AdminSetting::publicPreferences(),
             'csrf_token' => $request->session()->token(),
         ])->header('Cache-Control', 'no-store, private');
@@ -37,7 +38,7 @@ class AuthController extends Controller
     public function register(Request $request): JsonResponse
     {
         $preferences = AdminSetting::preferences();
-        abort_if($preferences['maintenance'], 503, __('O Fluxo está em manutenção. Tente novamente em breve.'));
+        abort_if($preferences['maintenance'], 503, __('O Tempozi está em manutenção. Tente novamente em breve.'));
         abort_unless($preferences['newAccounts'], 403, __('Novos cadastros estão temporariamente desativados.'));
         $this->normalizeEmail($request);
         $data = $request->validate([
@@ -58,8 +59,33 @@ class AuthController extends Controller
         $user = User::create($data);
         Auth::login($user);
         $request->session()->regenerate();
+        $user->sendEmailVerificationNotification();
 
         return $this->session($request)->setStatusCode(201);
+    }
+
+    public function sendEmailVerificationNotification(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        abort_unless($user instanceof User, 401);
+
+        if (! $user->hasVerifiedEmail()) {
+            $user->sendEmailVerificationNotification();
+        }
+
+        return response()->json(['message' => __('Se o e-mail ainda não foi confirmado, enviamos um novo link de confirmação.')]);
+    }
+
+    public function verifyEmail(string $id, string $hash): RedirectResponse
+    {
+        $user = User::query()->findOrFail($id);
+        abort_unless(hash_equals(sha1($user->getEmailForVerification()), $hash), 403);
+
+        if (! $user->hasVerifiedEmail()) {
+            $user->markEmailAsVerified();
+        }
+
+        return redirect('/?email_verified=1');
     }
 
     public function login(Request $request): JsonResponse

@@ -50,6 +50,10 @@ watch(view, (value) => {
 });
 const selectedProject = ref("all");
 const search = ref("");
+const productName = computed(() => {
+  const configuredName = auth.site?.name?.trim();
+  return configuredName && !["fluxo", "tempozi"].includes(configuredName.toLocaleLowerCase()) ? configuredName : "tempozi";
+});
 const blockedOnly = ref(false);
 const statusFilter = ref("all");
 const sidebarOpen = ref(false);
@@ -164,7 +168,7 @@ onMounted(load);
  <div class="app-shell">
   <div v-if="sidebarOpen" class="sidebar-backdrop" @click="sidebarOpen=false"></div>
   <aside class="sidebar" :class="{open:sidebarOpen}">
-   <a class="brand" href="#" @click.prevent="chooseProject('all')"><span class="brand-mark"><span></span><span></span><span></span></span><span>{{auth.site?.name && auth.site.name !== "Fluxo" ? auth.site.name : "fluxo"}}<span class="brand-period">.</span></span></a>
+   <a class="brand" href="#" @click.prevent="chooseProject('all')"><span class="brand-mark"><span></span><span></span><span></span></span><span>{{productName}}<span class="brand-period">.</span></span></a>
    <p class="nav-label">{{ t("SEU TRABALHO") }}</p>
    <nav><button class="nav-item" :class="{active:view==='board'&&selectedProject==='all'}" @click="chooseProject('all')"><LayoutDashboard :size="19" /> {{ t("Meu quadro") }} <span class="nav-count">{{ state.tasks.length }}</span></button><button class="nav-item" :class="{active:view==='calendar'}" @click="changeView('calendar')"><CalendarDays :size="19" /> {{ t("Calendário") }}</button><button class="nav-item" :class="{active:view==='daily'}" @click="changeView('daily')"><ListTodo :size="19" /> {{ t("Meu dia") }}</button><button class="nav-item" :class="{active:view==='work-history'}" @click="changeView('work-history')"><BarChart3 :size="19" /> {{ t("Histórico de horas") }} <LockKeyhole v-if="!workHours.canTrack.value" :size="12" style="margin-left:auto" /></button><button class="nav-item" :class="{active:view==='whiteboard'}" @click="changeView('whiteboard')"><Pencil :size="19" /> {{ t("Quadro de ideias") }}</button></nav>
    <div class="nav-section-title"><button class="nav-label project-section-link" :class="{active:view==='projects'}" :aria-label="t('Ver todos os projetos')" @click="changeView('projects')">{{ t("MEUS PROJETOS") }} <span>{{ state.projects.length }}</span></button><button class="icon-btn tiny" :aria-label="t('Criar projeto')" @click="projectForm={project:null}"><Plus :size="16" /></button></div>

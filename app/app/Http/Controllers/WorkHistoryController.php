@@ -46,7 +46,7 @@ class WorkHistoryController extends Controller
 
     public function updateReceipt(Request $request): JsonResponse
     {
-        abort_unless($request->user()->hasPro(), 403, __('O cálculo de pagamento está disponível no Fluxo Pro.'));
+        abort_unless($request->user()->hasPro(), 403, __('O cálculo de pagamento está disponível no Tempozi Pro.'));
         $data = $request->validate([
             'date' => ['required', 'date_format:Y-m-d', 'after_or_equal:1900-01-01'],
             'entry_version' => ['required', 'integer', 'min:0'],

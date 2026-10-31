@@ -19,7 +19,7 @@ test('o executável empacotado inicia e encerra o serviço local com seus própr
 }, async (t) => {
   const temporary = await fs.mkdtemp(path.join(build, 'test-native-local space-'));
   const data = path.join(temporary, 'data');
-  const installation = path.join(temporary, 'Fluxo Jornada');
+  const installation = path.join(temporary, 'Tempozi Jornada');
   const resources = ['backend', 'php', 'runtime'];
   t.after(async () => {
     assert.ok(path.resolve(temporary).startsWith(build + path.sep + 'test-'));
@@ -45,7 +45,7 @@ test('o executável empacotado inicia e encerra o serviço local com seus própr
   });
   const report = JSON.parse(await fs.readFile(path.join(data, 'runtime-check.json'), 'utf8'));
   assert.equal(report.ready, true);
-  assert.ok(report.resources.includes('Fluxo Jornada'));
+  assert.ok(report.resources.includes('Tempozi Jornada'));
   if (process.platform === 'win32') assert.ok(report.resources.startsWith('\\\\?\\'), 'Usa o caminho canônico fornecido pelo Tauri');
   await assert.rejects(fetch(report.url + '/__fluxo_desktop_health', {
     signal: AbortSignal.timeout(1000)

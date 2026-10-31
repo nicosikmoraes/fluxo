@@ -6,7 +6,7 @@ async function fetchFromServer(url, options) {
   try {
     return await fetch(url, options);
   } catch {
-    throw new Error(window.__TAURI__ ? t("Não foi possível acessar seus dados locais. Feche o Fluxo Jornada pelo ícone perto do relógio e abra o aplicativo novamente.") : t("Não foi possível conectar ao servidor do Fluxo. Inicie o Fluxo pelo arquivo Iniciar-Fluxo.cmd e tente novamente."));
+    throw new Error(window.__TAURI__ ? t("Não foi possível acessar seus dados locais. Feche o Tempozi Jornada pelo ícone perto do relógio e abra o aplicativo novamente.") : t("Não foi possível conectar ao servidor do Tempozi. Inicie o Tempozi pelo arquivo Iniciar-Tempozi.cmd e tente novamente."));
   }
 }
 export async function restoreSession() {
@@ -15,7 +15,7 @@ export async function restoreSession() {
   restoring = (async () => {
     try {
       const response = await fetchFromServer("/api/auth/session", { headers: { Accept: "application/json", "Accept-Language": currentLocale.value }, credentials: "same-origin", cache: "no-store" });
-      if (!response.ok) throw new Error(t("Não foi possível conectar ao Fluxo. Tente novamente."));
+      if (!response.ok) throw new Error(t("Não foi possível conectar ao Tempozi. Tente novamente."));
       const data = await response.json();
       auth.user = data.user;
       auth.site = data.site || null;

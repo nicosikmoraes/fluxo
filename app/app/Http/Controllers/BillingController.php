@@ -142,7 +142,7 @@ class BillingController extends Controller
     public function portal(Request $request): JsonResponse
     {
         abort_unless(config('billing.enabled') && config('cashier.secret'), 503, __('As assinaturas ainda não estão disponíveis. Tente novamente em breve.'));
-        abort_unless($request->user()->stripe_id, 409, __('Você ainda não tem uma conta de cobrança. Conheça o Fluxo Pro.'));
+        abort_unless($request->user()->stripe_id, 409, __('Você ainda não tem uma conta de cobrança. Conheça o Tempozi Pro.'));
         try {
             return response()->json(['url' => $request->user()->billingPortalUrl(rtrim(config('app.url'), '/').'/?view=billing')]);
         } catch (ApiErrorException $exception) {

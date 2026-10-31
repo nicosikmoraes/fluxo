@@ -10,7 +10,7 @@ import './roadmap-dark.css';
 const options = [
  { id: 'graphite', number: '01', name: 'Grafite essencial', description: 'Cards neutros, cores nos detalhes e animações suaves para acompanhar o progresso.', swatches: ['#17191c', '#26282d', '#c1afd9', '#a6ceb7'] },
  { id: 'contrast', number: '02', name: 'Contraste preciso', description: 'Superfícies bem definidas, títulos claros e conexões mais visíveis.', swatches: ['#111214', '#2b2e34', '#e2dcea', '#e1be87'] },
- { id: 'lilac', number: '03', name: 'Lilás suave', description: 'A identidade do Fluxo em camadas sutis, com profundidade e cor contida.', swatches: ['#1b1820', '#302a38', '#c1afd9', '#a6ceb7'] },
+ { id: 'lilac', number: '03', name: 'Lilás suave', description: 'A identidade do Tempozi em camadas sutis, com profundidade e cor contida.', swatches: ['#1b1820', '#302a38', '#c1afd9', '#a6ceb7'] },
 ];
 const query = new URLSearchParams(location.search).get('style');
 const selected = ref(options.some((option) => option.id === query) ? query : 'graphite');
@@ -27,12 +27,12 @@ function reset() { resetRoadmapDemo(); opened.value = null; instance.value++; }
   <header class="prototype-review">
    <div class="prototype-review-title"><span class="prototype-moon"><Moon :size="18"/></span><div><small>ESTUDO VISUAL</small><strong>Roadmap no escuro</strong></div></div>
    <div class="prototype-variants" role="group" aria-label="Opções de estilo do roadmap"><button v-for="option in options" :key="option.id" :class="{active:selected===option.id&&!showCurrent}" :aria-pressed="selected===option.id&&!showCurrent" @click="select(option.id)"><span>{{ option.number }}</span>{{ option.name }}</button></div>
-   <a href="/" class="prototype-back">Voltar ao Fluxo</a>
+   <a href="/" class="prototype-back">Voltar ao Tempozi</a>
   </header>
   <div class="app-shell">
    <div v-if="sidebarOpen" class="sidebar-backdrop" @click="sidebarOpen=false"></div>
    <aside class="sidebar" :class="{open:sidebarOpen}">
-    <a class="brand" href="/"><span class="brand-mark"><span></span><span></span><span></span></span><span>fluxo<span class="brand-period">.</span></span></a>
+    <a class="brand" href="/"><span class="brand-mark"><span></span><span></span><span></span></span><span>tempozi<span class="brand-period">.</span></span></a>
     <p class="nav-label">SEU TRABALHO</p>
     <nav><a href="/" class="nav-item"><LayoutDashboard :size="19"/> Meu quadro <span class="nav-count">3</span></a><a href="/" class="nav-item"><CalendarDays :size="19"/> Calendário</a><a href="/" class="nav-item"><ListTodo :size="19"/> Meu dia</a><a href="/?view=work-history" class="nav-item"><BarChart3 :size="19"/> Histórico de horas</a><a href="/?view=whiteboard" class="nav-item"><Pencil :size="19"/> Quadro de ideias</a></nav>
     <div class="nav-section-title"><span class="nav-label">MEUS PROJETOS <span>1</span></span><Plus :size="16"/></div>

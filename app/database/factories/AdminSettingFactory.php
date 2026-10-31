@@ -10,6 +10,6 @@ class AdminSettingFactory extends Factory
 {
     public function definition(): array
     {
-        return ['values' => ['name' => 'Fluxo', 'email' => null, 'defaultGrant' => '30', 'newAccounts' => true, 'maintenance' => false], 'version' => 0];
+        return ['values' => ['name' => 'Tempozi', 'email' => null, 'defaultGrant' => '30', 'newAccounts' => true, 'maintenance' => false], 'version' => 0];
     }
 }

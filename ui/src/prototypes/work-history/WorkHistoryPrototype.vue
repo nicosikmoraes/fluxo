@@ -61,7 +61,7 @@ function receive(payload) {
   <div class="app-shell history-prototype">
     <div v-if="mobileMenu" class="history-mobile-backdrop" @click="mobileMenu = false"></div>
     <aside class="sidebar history-sidebar" :class="{ open: mobileMenu }">
-      <a class="brand" href="/"><span class="brand-mark"><span></span><span></span><span></span></span><span>fluxo<span class="brand-period">.</span></span></a>
+      <a class="brand" href="/"><span class="brand-mark"><span></span><span></span><span></span></span><span>tempozi<span class="brand-period">.</span></span></a>
       <div class="workspace-name"><div class="workspace-icon"><Monitor :size="17" /></div><div><strong>Meu espaço</strong><span>Feito para o seu ritmo</span></div><span class="local-dot"></span></div>
       <p class="nav-label">SEU TRABALHO</p>
       <nav aria-label="Navegação do protótipo"><a class="nav-item" href="/"><LayoutDashboard :size="18" /> Meu quadro </a><a class="nav-item" href="/ui/prototypes/work-hours.html?screen=daily"><ListTodo :size="18" /> Meu dia</a><span class="history-nav-section">SUA JORNADA</span><a class="nav-item" href="/ui/prototypes/work-hours.html"><Clock3 :size="18" /> Registro de horários</a><a class="nav-item active" href="/ui/prototypes/work-history.html" aria-current="page"><BarChart3 :size="18" /> Histórico de horas</a></nav>

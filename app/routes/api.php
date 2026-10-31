@@ -24,6 +24,11 @@ Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword'])-
 Route::post('/auth/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:password-recovery');
 
 Route::middleware(['auth', 'auth.session'])->group(function (): void {
+    Route::post('/auth/logout', [AuthController::class, 'logout']);
+    Route::post('/auth/email/verification-notification', [AuthController::class, 'sendEmailVerificationNotification'])->middleware('throttle:6,1');
+});
+
+Route::middleware(['auth', 'auth.session', 'verified'])->group(function (): void {
 
     Route::prefix('admin')->middleware(['can:access-admin', 'throttle:120,1'])->group(function (): void {
         Route::get('/overview', [AdminDashboardController::class, 'index']);
@@ -41,7 +46,6 @@ Route::middleware(['auth', 'auth.session'])->group(function (): void {
     Route::get('/billing', [BillingController::class, 'index']);
     Route::post('/billing/checkout', [BillingController::class, 'checkout'])->middleware('throttle:10,1');
     Route::post('/billing/portal', [BillingController::class, 'portal'])->middleware('throttle:10,1');
-    Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::put('/profile/preferences', [ProfilePreferenceController::class, 'update']);
     Route::get('/whiteboards', [WhiteboardController::class, 'index']);
     Route::post('/whiteboards', [WhiteboardController::class, 'storeBoard']);

@@ -11,7 +11,7 @@ const options = [
 <template>
   <section class="appearance-settings" aria-labelledby="appearance-heading">
     <header><span class="appearance-heading-icon"><Palette :size="18" /></span><div><h2 id="appearance-heading">{{ t("Aparência") }}</h2><p>{{ t("Escolha como você quer ver o seu espaço.") }}</p></div></header>
-    <div class="appearance-options" role="radiogroup" :aria-label="t('Tema do Fluxo')">
+    <div class="appearance-options" role="radiogroup" :aria-label="t('Tema do Tempozi')">
       <label v-for="option in options" :key="option.id" class="appearance-option" :class="{ 'is-selected': theme === option.id }">
         <input type="radio" name="fluxo-theme" :value="option.id" :checked="theme === option.id" @change="setTheme(option.id)">
         <span class="appearance-preview" :class="option.id" aria-hidden="true"><i class="preview-sidebar"></i><span class="preview-main"><i></i><span><b></b><b></b><b></b></span></span></span>

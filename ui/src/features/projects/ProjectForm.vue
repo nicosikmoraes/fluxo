@@ -25,7 +25,7 @@ async function save() {
 </script>
 <template>
  <Modal :title="project ? t('Editar projeto') : t('Novo projeto')" @close="emit('close')">
-  <p v-if="atLimit" role="status">{{ t("Você atingiu o limite de 3 projetos do plano gratuito.") }} <button class="text-btn" @click="emit('upgrade')">{{ t("Conhecer Fluxo Pro") }}</button></p>
+  <p v-if="atLimit" role="status">{{ t("Você atingiu o limite de 3 projetos do plano gratuito.") }} <button class="text-btn" @click="emit('upgrade')">{{ t("Conhecer Tempozi Pro") }}</button></p>
   <form v-validate novalidate class="form-stack" @submit.prevent="save">
    <label>{{ t("Nome do projeto") }} <span class="required">*</span><input v-model="form.title" autofocus data-validate-required aria-required="true" data-validate-maxlength="160" :placeholder="t('Dê um nome à sua próxima ideia')"></label>
    <label>{{ t("Escolha uma capa") }}</label>

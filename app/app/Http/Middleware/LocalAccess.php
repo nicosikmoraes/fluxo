@@ -16,7 +16,7 @@ class LocalAccess
             $allowed = array_merge($allowed, ['http://127.0.0.1:8787', 'http://localhost:8787', 'http://127.0.0.1:8001', 'http://localhost:8001', 'http://127.0.0.1:5173', 'http://localhost:5173']);
         }
         if ($request->is('api/*') && (($origin && ! in_array($origin, $allowed, true)) || $request->headers->get('Sec-Fetch-Site') === 'cross-site')) {
-            abort(403, __('Acesse o Fluxo pelo endereço da aplicação.'));
+            abort(403, __('Acesse o Tempozi pelo endereço da aplicação.'));
         }
         $response = $next($request);
         if ($request->is('api/*')) {

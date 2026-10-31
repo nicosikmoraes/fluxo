@@ -1,4 +1,4 @@
-# Ilustração do Fluxo
+# Ilustração do Tempozi
 
 Ferramenta: **imagegen integrada**, geração nova, sem referências externas.
 

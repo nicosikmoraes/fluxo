@@ -9,7 +9,7 @@ let wrapper,site,user;
 const respond=body=>({ok:true,status:200,json:async()=>body});
 beforeEach(()=>{
  setLocale("pt-BR");auth.user=null;auth.loading=true;auth.error="";auth.csrfToken="public-test-token";auth.site=null;
- site={name:"Fluxo",email:"suporte@example.com",registration_enabled:true,maintenance:false};
+ site={name:"Tempozi",email:"suporte@example.com",registration_enabled:true,maintenance:false};
  user={id:1,name:"Usuário",email:"user@example.com",is_admin:false,locale:"pt-BR"};
  vi.stubGlobal("fetch",vi.fn(async()=>respond({user,site,csrf_token:"token"})));
 });
@@ -35,6 +35,6 @@ describe("administrative public settings",()=>{
   vi.stubGlobal("fetch",vi.fn(async()=>respond({plan:"pro",access_source:"manual",courtesy_expires_at:"2026-11-29T12:00:00Z",entitlements:{work_tracking:true},price:{amounts:{usd:500,brl:1299}},usage:{projects:0},subscription:null,checkout_available:true,portal_available:false})));
   wrapper=mount(BillingSettings);await flushPromises();
   expect(wrapper.text()).toContain("Seu acesso Pro foi concedido pela administração.");expect(wrapper.text()).toContain("Válido até");
-  expect(wrapper.findAll("button").some(b=>b.text().includes("Assinar Fluxo Pro"))).toBe(false);
+  expect(wrapper.findAll("button").some(b=>b.text().includes("Assinar Tempozi Pro"))).toBe(false);
  });
 });
