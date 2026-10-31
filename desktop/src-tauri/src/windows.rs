@@ -92,7 +92,7 @@ pub fn create_widget(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> 
     let url = window_url(app, "desktop=widget").map_err(std::io::Error::other)?;
     let port = url.port();
     let window = WebviewWindowBuilder::new(app, "widget", WebviewUrl::External(url))
-        .title("Fluxo Jornada")
+        .title("Tempozi Jornada")
         .inner_size(348.0, 210.0)
         .decorations(false)
         .transparent(true)
@@ -146,7 +146,7 @@ fn open_workspace(app: &AppHandle, view: &str) -> Result<(), String> {
     }
     let port = url.port();
     let window = WebviewWindowBuilder::new(app, "workspace", WebviewUrl::External(url))
-        .title("Fluxo Jornada — seu espaço")
+        .title("Tempozi Jornada — seu espaço")
         .inner_size(1120.0, 780.0)
         .min_inner_size(650.0, 500.0)
         .center()
@@ -182,7 +182,7 @@ pub fn create_tray(app: &AppHandle) -> tauri::Result<()> {
     )?;
     let history = MenuItem::with_id(app, "history", "Histórico de horas", true, None::<&str>)?;
     let pin = MenuItem::with_id(app, "pin", "Alternar sempre no topo", true, None::<&str>)?;
-    let quit = MenuItem::with_id(app, "quit", "Sair do Fluxo Jornada", true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", "Sair do Tempozi Jornada", true, None::<&str>)?;
     let menu = Menu::with_items(app, &[&show, &settings, &history, &pin, &quit])?;
     TrayIconBuilder::with_id("jornada")
         .icon(
@@ -190,7 +190,7 @@ pub fn create_tray(app: &AppHandle) -> tauri::Result<()> {
                 .cloned()
                 .expect("Ícone do aplicativo ausente"),
         )
-        .tooltip("Fluxo Jornada — seus horários neste computador")
+        .tooltip("Tempozi Jornada — seus horários neste computador")
         .menu(&menu)
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id.as_ref() {
@@ -366,7 +366,7 @@ pub async fn desktop_import(app: AppHandle) -> Result<bool, String> {
     let folder = app
         .dialog()
         .file()
-        .set_title("Selecione a pasta app da instalação atual do Fluxo")
+        .set_title("Selecione a pasta app da instalação atual do Tempozi")
         .blocking_pick_folder();
     let Some(folder) = folder else {
         return Ok(false);

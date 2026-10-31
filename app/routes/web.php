@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BillingWebhookController;
 use App\Models\Project;
 use App\Models\Task;
@@ -10,6 +11,7 @@ $screen = fn () => response(file_get_contents(public_path('ui/index.html')), 200
 Route::get('/', $screen)->name('login');
 Route::get('/admin', fn () => response(file_get_contents(public_path('ui/admin.html')), 200, ['Content-Type' => 'text/html; charset=UTF-8', 'Cache-Control' => 'no-store, private']))->middleware(['auth', 'auth.session', 'can:access-admin'])->name('admin');
 Route::get('/reset-password/{token}', $screen)->name('password.reset');
+Route::get('/email/verify/{id}/{hash}', [AuthController::class, 'verifyEmail'])->middleware('signed')->name('verification.verify');
 Route::prefix('api')->group(base_path('routes/api.php'));
 Route::post('/stripe/webhook', BillingWebhookController::class)->name('cashier.webhook');
 

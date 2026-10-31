@@ -23,7 +23,7 @@ class RoadmapController extends Controller
 
         $roadmap = DB::transaction(function () use ($r, $project, $d): Roadmap {
             $user = User::whereKey($r->user()->id)->lockForUpdate()->firstOrFail();
-            abort_if(! $user->hasPro() && Roadmap::where('project_id', $project->id)->count() >= config('billing.free_roadmaps_per_project'), 403, __('O plano gratuito permite um roadmap por projeto. Conheça o Fluxo Pro para criar mais.'));
+            abort_if(! $user->hasPro() && Roadmap::where('project_id', $project->id)->count() >= config('billing.free_roadmaps_per_project'), 403, __('O plano gratuito permite um roadmap por projeto. Conheça o Tempozi Pro para criar mais.'));
 
             return Roadmap::create($d + ['project_id' => $project->id])->load('nodes', 'edges');
         });

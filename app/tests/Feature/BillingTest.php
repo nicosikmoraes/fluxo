@@ -136,7 +136,7 @@ class BillingTest extends TestCase
             $this->postJson('/api/projects', ['title' => 'Projeto '.$i, 'cover' => 'desk'])->assertCreated();
         }
         $this->postJson('/api/projects', ['title' => 'Quarto', 'cover' => 'desk', 'plan' => 'pro'])->assertForbidden()
-            ->assertJsonPath('message', 'O plano gratuito permite até 3 projetos. Conheça o Fluxo Pro para criar mais.');
+            ->assertJsonPath('message', 'O plano gratuito permite até 3 projetos. Conheça o Tempozi Pro para criar mais.');
         $this->assertDatabaseCount('projects', 3);
         $this->assertDatabaseMissing('projects', ['title' => 'Quarto']);
     }
@@ -191,7 +191,7 @@ class BillingTest extends TestCase
         $user = User::factory()->create(['locale' => 'en-US', 'work_settings' => $settings]);
 
         $this->actingAs($user)->json($method, $url, ['settings' => ['enabled' => true], 'billing' => ['plan' => 'pro']])
-            ->assertForbidden()->assertJsonPath('message', 'Work tracking is available with Fluxo Pro.')
+            ->assertForbidden()->assertJsonPath('message', 'Work tracking is available with Tempozi Pro.')
             ->assertJsonMissingPath('day')->assertJsonMissingPath('records');
         $this->assertDatabaseCount('work_days', 0);
         $this->assertSame(0, $user->fresh()->work_settings_version);

@@ -128,7 +128,7 @@ expanded.value = view.value !== "settings";
   <div class="app-shell work-prototype">
     <div v-if="mobileMenu" class="prototype-mobile-backdrop" @click="mobileMenu = false"></div>
     <aside class="sidebar prototype-sidebar" :class="{ 'prototype-sidebar-open': mobileMenu }">
-      <a class="brand" href="#" @click.prevent="navigate('board')"><span class="brand-mark"><span></span><span></span><span></span></span><span>fluxo<span class="brand-period">.</span></span></a>
+      <a class="brand" href="#" @click.prevent="navigate('board')"><span class="brand-mark"><span></span><span></span><span></span></span><span>tempozi<span class="brand-period">.</span></span></a>
       <div class="workspace-name"><div class="workspace-icon"><Monitor :size="17" /></div><div><strong>Meu espaço</strong><span>Feito para o seu ritmo</span></div><span class="local-dot"></span></div>
       <p class="nav-label">SEU TRABALHO</p>
       <nav aria-label="Navegação da prévia">
@@ -184,7 +184,7 @@ expanded.value = view.value !== "settings";
               </article>
             </section>
           </div>
-          <p class="prototype-board-footnote">Tasks de exemplo para visualizar o widget durante o uso do Fluxo.</p>
+          <p class="prototype-board-footnote">Tasks de exemplo para visualizar o widget durante o uso do Tempozi.</p>
           <section v-if="!day.showWidget" class="prototype-no-widget"><Clock3 :size="20" /><div><strong>{{ settings.enabled ? 'Sua jornada ainda está começando.' : 'Acompanhe seu tempo de trabalho.' }}</strong><p>{{ settings.enabled ? 'O widget aparece quando você registrar o retorno do almoço.' : 'Ative o acompanhamento nas configurações do seu perfil.' }}</p></div><button @click="navigate('settings')">Abrir configurações </button></section>
         </template>
 

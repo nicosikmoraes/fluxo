@@ -5,7 +5,7 @@ use Symfony\Component\Console\Input\ArrayInput;
 $base = getenv('FLUXO_BACKEND_DIR');
 $data = getenv('FLUXO_DATA_DIR');
 if (! $base || ! $data || ! is_dir($base)) {
-    fwrite(STDERR, "Não foi possível localizar os arquivos do Fluxo.\n");
+    fwrite(STDERR, "Não foi possível localizar os arquivos do Tempozi.\n");
     exit(1);
 }
 foreach (['', '/storage/app/private', '/storage/app/public', '/storage/framework/cache/data', '/storage/framework/sessions', '/storage/framework/views', '/storage/logs', '/cache'] as $folder) {
@@ -16,7 +16,7 @@ foreach (['', '/storage/app/private', '/storage/app/public', '/storage/framework
 $environmentPath = $data.'/.env';
 if (! file_exists($environmentPath)) {
     $key = 'base64:'.base64_encode(random_bytes(32));
-    $environment = "APP_NAME=Fluxo\nAPP_ENV=desktop\nAPP_DEBUG=false\nAPP_KEY=".$key."\nDB_CONNECTION=sqlite\nSESSION_DRIVER=database\nSESSION_LIFETIME=10080\nCACHE_STORE=database\nQUEUE_CONNECTION=sync\nMAIL_MAILER=log\nLOG_CHANNEL=single\nLOG_LEVEL=warning\n";
+    $environment = "APP_NAME=Tempozi\nAPP_ENV=desktop\nAPP_DEBUG=false\nAPP_KEY=".$key."\nDB_CONNECTION=sqlite\nSESSION_DRIVER=database\nSESSION_LIFETIME=10080\nCACHE_STORE=database\nQUEUE_CONNECTION=sync\nMAIL_MAILER=log\nLOG_CHANNEL=single\nLOG_LEVEL=warning\n";
     $temporaryPath = $environmentPath.'.new';
     if (file_put_contents($temporaryPath, $environment, LOCK_EX) === false || ! rename($temporaryPath, $environmentPath)) {
         throw new RuntimeException('Não foi possível preparar os dados locais.');

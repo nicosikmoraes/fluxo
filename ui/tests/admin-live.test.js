@@ -95,7 +95,7 @@ describe("live administration",()=>{
   expect(auth.user.is_admin).toBe(false);expect(wrapper.text()).not.toContain("Pessoa da API");expect(wrapper.text()).not.toContain("Tudo flui por aqui.");
  });
  it("does not load administrative APIs for an ordinary session",async()=>{
-  auth.user=null;auth.loading=true;fetchMock.mockImplementation(async()=>response({user:{...owner,is_admin:false},site:{name:"Fluxo"},csrf_token:"token"}));
+  auth.user=null;auth.loading=true;fetchMock.mockImplementation(async()=>response({user:{...owner,is_admin:false},site:{name:"Tempozi"},csrf_token:"token"}));
   wrapper=mount(AdminRoot);await settle();expect(wrapper.text()).toContain("Acesso restrito");
   expect(fetchMock).toHaveBeenCalledTimes(1);expect(fetchMock.mock.calls[0][0]).toBe("/api/auth/session");
  });

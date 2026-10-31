@@ -35,7 +35,7 @@ async function importLocalData() {
   try {
     if (await desktopCall("desktop_import")) {
       await props.connect();
-      importNotice.value = "Dados importados. Entre com o e-mail e a senha que você já usava no Fluxo.";
+      importNotice.value = "Dados importados. Entre com o e-mail e a senha que você já usava no Tempozi.";
     }
   } catch (error) {
     nativeError.value = String(error);

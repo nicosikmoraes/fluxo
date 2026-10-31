@@ -22,7 +22,7 @@ class ImportLegacyWorkspace extends Command
         }
         $user = User::where('email', Str::lower(trim($this->argument('email'))))->first();
         if (! $user) {
-            $this->error('Crie a conta no Fluxo antes de importar seus dados.');
+            $this->error('Crie a conta no Tempozi antes de importar seus dados.');
 
             return self::FAILURE;
         }

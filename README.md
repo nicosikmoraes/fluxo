@@ -1,4 +1,4 @@
-# Fluxo
+# Tempozi
 
 Seu trabalho, passo a passo. Kanban pessoal em Vue e Laravel, com SQLite e execução local no Windows.
 
@@ -26,13 +26,13 @@ Abra `http://127.0.0.1:8787`. Nas próximas vezes, basta executar o último coma
 
 ## Abrir o aplicativo local já instalado
 
-1. Dê dois cliques em **Iniciar-Fluxo.cmd**, nesta pasta.
+1. Dê dois cliques em **Iniciar-Tempozi.cmd**, nesta pasta.
 2. O navegador abre em **http://127.0.0.1:8787**.
 3. Mantenha a janela do inicializador aberta durante o uso. Para encerrar, pressione **Ctrl+C** ou digite **q** e Enter.
 
 Abrir apenas o endereço no navegador não inicia o servidor. Execute o arquivo pelo Explorador de Arquivos do Windows; abrir o `.cmd` no editor do Codex apenas mostra seu conteúdo.
 
-Também é possível pressionar **Win+R**, colar o caminho completo de `Iniciar-Fluxo.cmd` entre aspas e pressionar Enter. O inicializador abre o navegador quando a API estiver pronta. Se houver uma falha, a janela mantém o erro visível.
+Também é possível pressionar **Win+R**, colar o caminho completo de `Iniciar-Tempozi.cmd` entre aspas e pressionar Enter. O inicializador abre o navegador quando a API estiver pronta. Se houver uma falha, a janela mantém o erro visível.
 
 O PHP portátil, as dependências e a interface compilada já estão nesta pasta. O Node.js instalado no computador é usado pelo inicializador.
 

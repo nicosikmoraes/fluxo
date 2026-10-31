@@ -2,7 +2,7 @@
   "name": "fluxo-desktop",
   "version": "0.1.2",
   "private": true,
-  "description": "Widget local da jornada de trabalho do Fluxo",
+  "description": "Widget local da jornada de trabalho do Tempozi",
   "scripts": {
     "build": "node scripts/build.cjs",
     "dev": "node scripts/build.cjs --dev",

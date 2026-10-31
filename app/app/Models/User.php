@@ -2,8 +2,9 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
+use Illuminate\Auth\MustVerifyEmail as MustVerifyEmailTrait;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Contracts\Translation\HasLocalePreference;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -19,10 +20,10 @@ use Laravel\Cashier\Subscription;
 
 #[Fillable(['name', 'email', 'password', 'locale'])]
 #[Hidden(['password', 'remember_token', 'work_settings', 'work_settings_version', 'whiteboard', 'whiteboard_version', 'stripe_id', 'pm_type', 'pm_last_four', 'trial_ends_at', 'stripe_checkout_id', 'stripe_checkout_url', 'stripe_checkout_expires_at', 'stripe_checkout_attempt', 'stripe_checkout_payload', 'is_admin', 'disabled_at', 'pro_granted_at', 'pro_expires_at', 'pro_revoked_at', 'pro_granted_by', 'pro_reason', 'admin_version'])]
-class User extends Authenticatable implements HasLocalePreference
+class User extends Authenticatable implements HasLocalePreference, MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
-    use Billable, HasFactory, Notifiable;
+    use Billable, HasFactory, MustVerifyEmailTrait, Notifiable;
 
     protected $attributes = ['is_admin' => false, 'admin_version' => 0];
 

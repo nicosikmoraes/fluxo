@@ -95,7 +95,7 @@ fn main() {
                         "startup-error",
                         WebviewUrl::App("index.html".into()),
                     )
-                    .title("Fluxo Jornada")
+                    .title("Tempozi Jornada")
                     .inner_size(530.0, 240.0)
                     .center()
                     .initialization_script(format!("window.__FLUXO_STARTUP_ERROR__={text};"))
@@ -105,7 +105,7 @@ fn main() {
             Ok(())
         })
         .build(tauri::generate_context!())
-        .expect("Não foi possível abrir o Fluxo Jornada");
+        .expect("Não foi possível abrir o Tempozi Jornada");
     application.run(|app, event| {
         if let RunEvent::Exit = event {
             if let Some(state) = app.try_state::<DesktopState>() {

@@ -26,7 +26,7 @@ class WorkHoursController extends Controller
     public function update(Request $request): JsonResponse
     {
         $canCalculatePay = $request->user()->hasPro();
-        abort_if(! $canCalculatePay && ($request->filled('settings.monthlySalary') || $request->filled('settings.hourlyRate')), 403, __('O cálculo de pagamento está disponível no Fluxo Pro.'));
+        abort_if(! $canCalculatePay && ($request->filled('settings.monthlySalary') || $request->filled('settings.hourlyRate')), 403, __('O cálculo de pagamento está disponível no Tempozi Pro.'));
         $hourly = $request->user()->locale === 'en-US';
         $rules = [
             'settings' => ['required', 'array:enabled,weeklyHours,daysPerWeek,monthlySalary,hourlyRate,monthlyHours,overtimePremium,overtimeEnabled,timezone,cycleClosingDay'],

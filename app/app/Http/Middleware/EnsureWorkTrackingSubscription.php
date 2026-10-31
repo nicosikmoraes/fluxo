@@ -15,7 +15,7 @@ class EnsureWorkTrackingSubscription
      */
     public function handle(Request $request, Closure $next): Response
     {
-        abort_unless($request->user()?->hasPro(), 403, __('O acompanhamento da jornada está disponível no Fluxo Pro.'));
+        abort_unless($request->user()?->hasPro(), 403, __('O acompanhamento da jornada está disponível no Tempozi Pro.'));
 
         return $next($request);
     }

@@ -28,6 +28,7 @@ onMounted(connect);
   <p v-if="auth.loading">{{ t("Abrindo seu espaço...") }}</p>
  </div>
  <AuthScreen v-else-if="!auth.user || resetToken" :reset-token="resetToken" :reset-email="resetEmail" @reset-finished="resetToken=''" />
- <div v-else-if="auth.user && auth.site?.maintenance && !auth.user.is_admin" class="auth-loading" role="status"><h1>{{ t("Voltamos em breve.") }}</h1><p>{{ t("O Fluxo está em manutenção. Tente novamente em breve.") }}</p><a v-if="auth.site.email" :href="'mailto:'+auth.site.email">{{auth.site.email}}</a><button class="btn primary" @click="signOut">{{ t("Sair") }}</button></div>
+ <AuthScreen v-else-if="auth.user && !auth.user.email_verified" verification-required />
+ <div v-else-if="auth.user && auth.site?.maintenance && !auth.user.is_admin" class="auth-loading" role="status"><h1>{{ t("Voltamos em breve.") }}</h1><p>{{ t("O Tempozi está em manutenção. Tente novamente em breve.") }}</p><a v-if="auth.site.email" :href="'mailto:'+auth.site.email">{{auth.site.email}}</a><button class="btn primary" @click="signOut">{{ t("Sair") }}</button></div>
  <App v-else :key="auth.user.id" />
 </template>
